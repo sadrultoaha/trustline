@@ -75,11 +75,7 @@ export function SignupPage() {
         <Button type="submit" className="w-full" loading={signup.isPending} data-testid="signup-submit">
           {search.invite ? 'Create account & join' : 'Create organization'}
         </Button>
-        <div className="relative py-2 text-center text-xs text-muted-foreground">
-          <span className="relative z-10 bg-card px-2">or</span>
-          <div className="absolute inset-x-0 top-1/2 -z-0 border-t" />
-        </div>
-        <GoogleButton invite={search.invite} label="Sign up with Google" />
+        <GoogleButton divider invite={search.invite} label="Sign up with Google" />
       </form>
     </AuthLayout>
   )

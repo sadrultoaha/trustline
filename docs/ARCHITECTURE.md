@@ -57,10 +57,10 @@ selected by config. The fake must be realistic enough for the complete user flow
 | Interface | Real | Fake | Config key |
 |---|---|---|---|
 | `mail.Sender` | SMTP (mailpit locally) | in-memory outbox (tests) | `MAIL_MODE=smtp\|memory` |
-| `oauth.Provider` (Google) | `golang.org/x/oauth2` + userinfo | self-hosted consent page at `/auth/fake-google/authorize` | `GOOGLE_OAUTH_MODE=fake\|real` |
+| `oauth.Provider` (Google) | `golang.org/x/oauth2` + userinfo | self-hosted consent page at `/auth/fake-google/authorize` | `GOOGLE_OAUTH_MODE=fake\|real\|off` (`off` hides Google sign-in; fake is refused in prod) |
 | `connectors.Connector` | AWS/GCP/GitHub/Okta/… API clients (Phase 6) | sandbox: controllable state stored on the integration row | per-integration `mode` (`sandbox`/`live`) |
 | `ai.Provider` | Anthropic Messages API (`AI_MODEL`, default `claude-sonnet-4-6`) | deterministic fake producing the same structured outputs | `AI_MODE=fake\|anthropic` |
-| `blob.Store` | S3-compatible (MinIO locally) | local filesystem | `BLOB_MODE=s3\|fs` |
+| `blob.Store` | S3-compatible (MinIO locally), or the `blobs` table in Postgres | local filesystem | `BLOB_MODE=s3\|postgres\|fs` |
 | Slack notifications | incoming-webhook POST (org setting) | any HTTP endpoint (tests use `httptest`) | `settings.slack_webhook_url` |
 
 ---
@@ -463,3 +463,17 @@ person clicks **Apply**.
 Questionnaires use a random token; only its SHA-256 is stored. The public portal
 (`/api/v1/vendor-portal/{token}`, rate limited) needs no account, saves drafts, locks on submit
 and then queues an assessment of the answers.
+
+## 15. Hosted demo (Netlify + Render)
+
+Netlify builds `web/` and serves the static app (`netlify.toml`). At build time
+`web/scripts/netlify-redirects.mjs` writes `_redirects`, which proxies `/api/*`, `/auth/*`, `/agent/*`,
+`/healthz` and `/readyz` to `TRUSTLINE_API_URL`. If that variable is missing the build fails, so a
+frontend without a backend is never published. Because the browser only talks to the Netlify
+domain, session cookies stay first-party and no CORS is needed.
+
+The backend runs on Render from `render.yaml`. A single web service runs `trustline seed` and then
+`trustline all`, which runs the API and the worker in one process, with managed Postgres and Key
+Value (Redis). It runs with `TRUSTLINE_ENV=prod`, `GOOGLE_OAUTH_MODE=off`, `MAIL_MODE=memory`,
+`BLOB_MODE=postgres` and `AI_MODE=fake`, so it calls no external services. `BASE_URL` must be the
+Netlify URL, because questionnaire and invite links are built from it.

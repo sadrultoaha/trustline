@@ -168,3 +168,17 @@ Integration syncs are unique jobs that include the `running` state. A sync reque
 between a previous sync writing `last_sync_at` and River marking that job complete is dropped. The
 test helper retries until a new sync is observed. The same short window applies to the **Sync now**
 button; the scheduler's next tick covers it.
+
+## 2026-10-20 — Hosted demo: Netlify frontend, Render backend
+Netlify serves static sites and short functions; Trustline needs a long-running API, a job worker,
+Postgres and Redis. Netlify serves the frontend and proxies API paths to Render, which runs the
+container from `deploy/Dockerfile` with managed Postgres and Key Value. API and worker share one
+process (`trustline all`) so the free plan needs one service. Uploaded files are stored in
+Postgres (`BLOB_MODE=postgres`) rather than on disk, because Render pre-deploy jobs and separate
+services don't share a disk. At demo scale (a few MB) this costs nothing; production should use S3.
+
+## 2026-10-20 — Public demo runs in prod mode without Google sign-in
+The fake Google provider lets anyone pick any email, so it is refused in prod. The hosted demo
+uses `GOOGLE_OAUTH_MODE=off`, which removes the routes and hides the buttons via
+`GET /api/v1/auth/providers`. Mail goes to an in-memory outbox, so password reset and invite emails
+are not delivered there; questionnaire links are shown in the UI when sent.

@@ -32,7 +32,7 @@ type Config struct {
 	SessionTTL    time.Duration
 
 	// Google OAuth
-	GoogleOAuthMode    string // "fake" | "real"
+	GoogleOAuthMode    string // "fake" | "real" | "off"
 	GoogleClientID     string
 	GoogleClientSecret string
 
@@ -161,12 +161,13 @@ func (c *Config) Validate() error {
 		if c.Env == EnvProd {
 			errs = append(errs, errors.New("GOOGLE_OAUTH_MODE=fake is not allowed in prod"))
 		}
+	case "off":
 	case "real":
 		if c.GoogleClientID == "" || c.GoogleClientSecret == "" {
 			errs = append(errs, errors.New("GOOGLE_OAUTH_MODE=real requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET"))
 		}
 	default:
-		errs = append(errs, fmt.Errorf("GOOGLE_OAUTH_MODE must be fake or real (got %q)", c.GoogleOAuthMode))
+		errs = append(errs, fmt.Errorf("GOOGLE_OAUTH_MODE must be fake, real or off (got %q)", c.GoogleOAuthMode))
 	}
 	switch c.MailMode {
 	case "smtp", "memory":
@@ -174,9 +175,9 @@ func (c *Config) Validate() error {
 		errs = append(errs, fmt.Errorf("MAIL_MODE must be smtp or memory (got %q)", c.MailMode))
 	}
 	switch c.BlobMode {
-	case "s3", "fs":
+	case "s3", "fs", "postgres":
 	default:
-		errs = append(errs, fmt.Errorf("BLOB_MODE must be s3 or fs (got %q)", c.BlobMode))
+		errs = append(errs, fmt.Errorf("BLOB_MODE must be s3, fs or postgres (got %q)", c.BlobMode))
 	}
 	switch c.AIMode {
 	case "fake":

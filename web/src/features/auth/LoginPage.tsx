@@ -65,11 +65,7 @@ export function LoginPage() {
             Forgot your password?
           </Link>
         </div>
-        <div className="relative py-2 text-center text-xs text-muted-foreground">
-          <span className="relative z-10 bg-card px-2">or</span>
-          <div className="absolute inset-x-0 top-1/2 -z-0 border-t" />
-        </div>
-        <GoogleButton invite={search.invite} next={search.next} />
+        <GoogleButton divider invite={search.invite} next={search.next} />
       </form>
     </AuthLayout>
   )

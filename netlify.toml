@@ -1,0 +1,14 @@
+# Netlify serves the React app; API, auth and device-agent traffic is proxied
+# to the Go backend (set TRUSTLINE_API_URL in Netlify's environment variables).
+[build]
+  base = "web"
+  command = "npm ci && npm run build && node scripts/netlify-redirects.mjs"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

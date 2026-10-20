@@ -52,6 +52,26 @@ Mailpit (all outgoing email): http://localhost:8025 · MinIO console: http://loc
 
 Set `AI_MODE=anthropic` and `ANTHROPIC_API_KEY` in `.env.docker` to use Claude instead of the deterministic fake.
 
+## Deploy a hosted demo (Netlify + Render)
+
+Netlify serves the web app and proxies the API to a backend on Render (Netlify cannot run the Go
+server, worker, Postgres or Redis). Both sign in with GitHub.
+
+1. **Render:** **New → Blueprint**, pick this repository. `render.yaml` creates `trustline-api`,
+   Postgres and Key Value on free plans. When asked for `BASE_URL`, enter the Netlify URL you will
+   use (e.g. `https://trustline-demo.netlify.app`; you can change it later). The first deploy seeds
+   the demo org. Note the service URL, e.g. `https://trustline-api.onrender.com`.
+2. **Netlify:** **Add new project → Import an existing project → GitHub**, pick this repository and
+   the branch named in `render.yaml`. Build settings come from `netlify.toml`. Under **Environment
+   variables** add `TRUSTLINE_API_URL` = the Render URL, then deploy. If Netlify gave the site a
+   different name than step 1, update `BASE_URL` on Render.
+3. Open the Netlify URL and sign in as `ada@acme.test` / `Trustline-demo-2026!`.
+
+The demo uses the sandbox connectors and the deterministic AI. To use Claude, add `AI_MODE=anthropic` and
+`ANTHROPIC_API_KEY` as Render environment variables. Free Render services sleep when idle (the
+first request takes about a minute) and the free database expires after 30 days; `render.yaml`
+says what to upgrade.
+
 ## Local development (hot reload)
 
 ```bash

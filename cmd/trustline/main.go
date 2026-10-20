@@ -1,4 +1,4 @@
-// Command trustline is the single binary: serve | worker | migrate | seed.
+// Command trustline is the single binary: serve | worker | all | migrate | seed.
 package main
 
 import (
@@ -48,6 +48,8 @@ func main() {
 		runErr = serve(ctx, cfg, log)
 	case "worker":
 		runErr = worker(ctx, cfg, log)
+	case "all":
+		runErr = all(ctx, cfg, log)
 	case "migrate":
 		runErr = migrate(ctx, cfg, log)
 	case "seed":
@@ -65,7 +67,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: trustline <serve|worker|migrate|seed|version>")
+	fmt.Fprintln(os.Stderr, "usage: trustline <serve|worker|all|migrate|seed|version>")
 }
 
 func connectDB(ctx context.Context, cfg *config.Config, log *slog.Logger) (pool, error) {
@@ -171,9 +173,10 @@ func serve(ctx context.Context, cfg *config.Config, log *slog.Logger) error {
 	}
 	var provider oauth.Provider
 	redirect := cfg.BaseURL + "/auth/google/callback"
-	if cfg.GoogleOAuthMode == "real" {
+	switch cfg.GoogleOAuthMode {
+	case "real":
 		provider = oauth.NewGoogle(cfg.GoogleClientID, cfg.GoogleClientSecret, redirect)
-	} else {
+	case "fake":
 		provider = oauth.NewFake(cfg.BaseURL, redirect)
 	}
 	comp, err := app.NewCompliance(ctx, cfg, p, jc, log)
@@ -222,4 +225,15 @@ func worker(ctx context.Context, cfg *config.Config, log *slog.Logger) error {
 	sctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	return w.Client.River.Stop(sctx)
+}
+
+// all runs the API and the worker in one process, for single-machine hosts
+// where both must share a local blob directory. If either stops, both stop.
+func all(ctx context.Context, cfg *config.Config, log *slog.Logger) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	errc := make(chan error, 2)
+	go func() { errc <- worker(ctx, cfg, log); cancel() }()
+	go func() { errc <- serve(ctx, cfg, log); cancel() }()
+	return errors.Join(<-errc, <-errc)
 }

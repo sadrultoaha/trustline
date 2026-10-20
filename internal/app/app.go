@@ -21,7 +21,10 @@ import (
 	"github.com/trustline/trustline/internal/worker"
 )
 
-func NewBlob(ctx context.Context, cfg *config.Config) (blob.Store, error) {
+func NewBlob(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool) (blob.Store, error) {
+	if cfg.BlobMode == "postgres" {
+		return &blob.Postgres{Pool: pool}, nil
+	}
 	if cfg.BlobMode == "s3" {
 		return blob.NewS3(ctx, blob.S3Config{Endpoint: cfg.S3Endpoint, Region: cfg.S3Region, Bucket: cfg.S3Bucket, AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, PathStyle: cfg.S3PathStyle})
 	}
@@ -41,7 +44,7 @@ func NewCompliance(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, 
 	if err != nil {
 		return nil, err
 	}
-	store, err := NewBlob(ctx, cfg)
+	store, err := NewBlob(ctx, cfg, pool)
 	if err != nil {
 		return nil, err
 	}

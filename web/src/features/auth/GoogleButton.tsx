@@ -1,11 +1,16 @@
+import { useQuery } from '@tanstack/react-query'
+import { api } from '@/api/client'
 import { Button } from '@/components/ui/button'
 
-export function GoogleButton({ invite, next, label = 'Continue with Google' }: { invite?: string; next?: string; label?: string }) {
+export function GoogleButton({ invite, next, label = 'Continue with Google', divider }: { invite?: string; next?: string; label?: string; divider?: boolean }) {
+  // Hidden when the server runs with GOOGLE_OAUTH_MODE=off.
+  const providers = useQuery({ queryKey: ['auth-providers'], queryFn: () => api.get<{ google: boolean }>('/auth/providers'), staleTime: Infinity })
+  if (!providers.data?.google) return null
   const qs = new URLSearchParams()
   if (invite) qs.set('invite', invite)
   if (next) qs.set('next', next)
   const href = `/auth/google/start${qs.size ? `?${qs.toString()}` : ''}`
-  return (
+  const button = (
     <Button asChild variant="outline" className="w-full" type="button">
       <a href={href} data-testid="login-google">
         <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
@@ -17,5 +22,15 @@ export function GoogleButton({ invite, next, label = 'Continue with Google' }: {
         {label}
       </a>
     </Button>
+  )
+  if (!divider) return button
+  return (
+    <>
+      <div className="relative py-2 text-center text-xs text-muted-foreground">
+        <span className="relative z-10 bg-card px-2">or</span>
+        <div className="absolute inset-x-0 top-1/2 -z-0 border-t" />
+      </div>
+      {button}
+    </>
   )
 }

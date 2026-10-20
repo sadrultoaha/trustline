@@ -98,14 +98,19 @@ func (s *Server) Handler() http.Handler {
 	r.Get("/readyz", s.ready)
 
 	// OAuth browser redirects live outside /api so they are plain GETs.
-	r.Get("/auth/google/start", s.googleStart)
-	r.Get("/auth/google/callback", s.googleCallback)
-	s.oauth.Mount(r)
+	if s.oauth != nil {
+		r.Get("/auth/google/start", s.googleStart)
+		r.Get("/auth/google/callback", s.googleCallback)
+		s.oauth.Mount(r)
+	}
 
 	r.Route("/api/v1", func(api chi.Router) {
 		api.Use(jsonOnly)
 		api.Use(s.loadSession) // sets user if a valid cookie exists; never rejects
 
+		api.Get("/auth/providers", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(w, 200, map[string]bool{"google": s.oauth != nil})
+		})
 		api.Post("/auth/signup", s.signup)
 		api.Post("/auth/login", s.login)
 		api.Post("/auth/logout", s.logout)

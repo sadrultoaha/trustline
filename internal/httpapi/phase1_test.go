@@ -98,7 +98,11 @@ func TestPublicBucketFlipsControlAndCreatesRemediation(t *testing.T) {
 
 	// Notification.
 	n := c.Must(c.Get("/api/v1/notifications"), 200)
-	if n.Body["unread"].(float64) < 1 || !strings.Contains(items(n)[0]["title"].(string), "DAT-01") {
+	notified := false
+	for _, it := range items(n) {
+		notified = notified || (it["kind"] == "control_failing" && strings.Contains(it["title"].(string), "DAT-01"))
+	}
+	if n.Body["unread"].(float64) < 1 || !notified {
 		t.Fatalf("expected DAT-01 notification, got %s", n.Raw)
 	}
 	// Slack webhook delivered.

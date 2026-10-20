@@ -143,3 +143,28 @@ latest for the same integration.
 Each account is assigned to the account owner's manager when the manager has a Trustline account,
 otherwise to the campaign creator. Admins and editors can decide any item; other members only
 their own.
+
+## 2026-10-20 — Risks raised by tests and AI are suggestions
+A failing critical test or an AI assessment never writes straight into the register. It creates a
+`suggested` risk that a person accepts or dismisses, so the register only holds risks someone has
+owned. Only `critical`-severity tests raise risks, to keep the queue short.
+
+## 2026-10-20 — Vendor reviews cite page and section; tiers are never auto-applied
+Every finding in a vendor review carries `{page, section, quote}` so a reviewer can check it
+against the report. The recommended tier is shown next to the current one and applied by a
+person, because tier drives review cadence and contractual follow-up.
+
+## 2026-10-20 — PDF text comes from glyph positions
+The PDF library's row grouping returned whole pages as one row. `internal/pdftext` rebuilds lines
+from glyph X/Y positions, and the vendor review drops page footers and running headers before
+matching, so citations point at the right page. Image-only PDFs are not OCR'd (STATUS, Phase 3).
+
+## 2026-10-20 — Questionnaire links are bearer tokens
+The vendor portal is unauthenticated by design. The token is 32 random bytes, stored only as a
+hash, expires after 30 days, and is locked once answers are submitted.
+
+## 2026-10-20 — Test helper re-requests deduplicated syncs
+Integration syncs are unique jobs that include the `running` state. A sync requested in the moment
+between a previous sync writing `last_sync_at` and River marking that job complete is dropped. The
+test helper retries until a new sync is observed. The same short window applies to the **Sync now**
+button; the scheduler's next tick covers it.

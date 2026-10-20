@@ -57,6 +57,9 @@ type Result struct {
 //go:embed evidence/*.txt
 var evidenceFS embed.FS
 
+//go:embed vendors/northwind-soc2-type2.pdf
+var northwindSOC2 []byte
+
 // Run seeds the database. Safe to call repeatedly.
 func Run(ctx context.Context, pool *pgxpool.Pool, cfg *config.Config, log *slog.Logger) (*Result, error) {
 	res := &Result{Users: map[string]domain.ID{}}
@@ -102,6 +105,9 @@ func Run(ctx context.Context, pool *pgxpool.Pool, cfg *config.Config, log *slog.
 	}
 	if err := seedPhase2(ctx, comp, res.AcmeOrgID, res.Users, log); err != nil {
 		return nil, fmt.Errorf("seed acme people & policies: %w", err)
+	}
+	if err := seedPhase3(ctx, comp, res.AcmeOrgID, res.Users, log); err != nil {
+		return nil, fmt.Errorf("seed acme risks & vendors: %w", err)
 	}
 	return res, nil
 }
@@ -409,4 +415,120 @@ func ensureOrg(ctx context.Context, tx pgx.Tx, orgs *org.Service, name, slug str
 		}
 	}
 	return orgID, nil
+}
+
+func ptr[T any](v T) *T { return &v }
+
+func seedPhase3(ctx context.Context, comp *compliance.Service, orgID domain.ID, users map[string]domain.ID, log *slog.Logger) error {
+	ada := users["ada@acme.test"]
+	actor := domain.Actor{Type: domain.ActorUser, ID: &ada, Label: "ada@acme.test"}
+	members, err := orgMembers(ctx, comp, orgID)
+	if err != nil {
+		return err
+	}
+	controls, err := comp.ListControls(ctx, orgID, compliance.ControlFilter{})
+	if err != nil {
+		return err
+	}
+	byCode := map[string]string{}
+	for _, c := range controls {
+		byCode[c.Code] = c.ID.String()
+	}
+	ids := func(codes ...string) []string {
+		var out []string
+		for _, c := range codes {
+			if id, ok := byCode[c]; ok {
+				out = append(out, id)
+			}
+		}
+		return out
+	}
+	existing, err := comp.ListRisks(ctx, orgID, compliance.RiskFilter{})
+	if err != nil {
+		return err
+	}
+	if len(existing) == 0 {
+		grace := members["grace@acme.test"].String()
+		adaM := members["ada@acme.test"].String()
+		risks := []compliance.RiskInput{
+			{Title: ptr("Customer data exposed through a misconfigured cloud resource"), Category: ptr("Privacy"), Likelihood: ptr(3), Impact: ptr(5), ResidualLikelihood: ptr(2), ResidualImpact: ptr(4),
+				Treatment: ptr("mitigate"), TreatmentPlan: ptr("Account-wide S3 Block Public Access, continuous monitoring in Trustline, quarterly configuration review."), Status: ptr("in_treatment"),
+				OwnerMembershipID: &grace, ControlIDs: ids("DAT-01", "CRY-01", "LOG-04"), Description: ptr("A public bucket or unencrypted database exposes customer records.")},
+			{Title: ptr("Phishing leads to account takeover"), Category: ptr("Security"), Likelihood: ptr(4), Impact: ptr(4), ResidualLikelihood: ptr(2), ResidualImpact: ptr(3),
+				Treatment: ptr("mitigate"), TreatmentPlan: ptr("Phishing-resistant MFA everywhere, annual training, Okta session limits."), Status: ptr("in_treatment"),
+				OwnerMembershipID: &grace, ControlIDs: ids("IAM-01", "HR-02", "IAM-11"), Description: ptr("An employee enters credentials on a phishing page.")},
+			{Title: ptr("Prolonged outage of the primary region"), Category: ptr("Operational"), Likelihood: ptr(2), Impact: ptr(5),
+				Treatment: ptr("mitigate"), TreatmentPlan: ptr("Multi-AZ databases, tested restores, documented DR runbook."), Status: ptr("open"),
+				OwnerMembershipID: &adaM, ControlIDs: ids("BCP-01", "BCP-03", "DAT-03"), Description: ptr("An AWS regional outage takes the product offline.")},
+			{Title: ptr("Key vendor breach exposes our data"), Category: ptr("Third party"), Likelihood: ptr(2), Impact: ptr(4), Treatment: ptr("transfer"),
+				TreatmentPlan: ptr("Annual SOC 2 review of critical vendors, DPAs with breach notification, cyber insurance."), Status: ptr("accepted"),
+				OwnerMembershipID: &adaM, ControlIDs: ids("VEN-02", "VEN-03"), Description: ptr("A storage or SaaS vendor is compromised.")},
+			{Title: ptr("Former employee retains access"), Category: ptr("People"), Likelihood: ptr(3), Impact: ptr(3), Treatment: ptr("mitigate"),
+				TreatmentPlan: ptr("HRIS-driven offboarding verified in every connected system within one business day."), Status: ptr("open"),
+				OwnerMembershipID: &adaM, ControlIDs: ids("HR-05", "IAM-04"), Description: ptr("Accounts of departed staff are not removed.")},
+		}
+		for _, r := range risks {
+			if _, err := comp.CreateRisk(ctx, orgID, r, actor); err != nil {
+				return fmt.Errorf("risk: %w", err)
+			}
+		}
+		if _, _, err := comp.CompleteWithAI(ctx, comp.AI, orgID, actor); err != nil {
+			return fmt.Errorf("ai risk assessment: %w", err)
+		}
+	}
+	vendors, err := comp.ListVendors(ctx, orgID, "")
+	if err != nil {
+		return err
+	}
+	have := map[string]compliance.Vendor{}
+	for _, v := range vendors {
+		have[v.Name] = v
+	}
+	if _, ok := have["Northwind Cloud Storage"]; !ok {
+		v, err := comp.CreateVendor(ctx, orgID, compliance.VendorInput{Name: ptr("Northwind Cloud Storage"), Domain: ptr("northwind.example"), Category: ptr("Storage"),
+			Description: ptr("Encrypted object storage for customer file uploads."), DataAccess: ptr("confidential"), HandlesPII: ptr(true), OwnerMembershipID: ptr(members["grace@acme.test"].String())}, actor)
+		if err != nil {
+			return err
+		}
+		if _, err := comp.UploadVendorDocument(ctx, orgID, v.ID, compliance.VendorDocInput{Kind: "soc2_type2", Title: "Northwind SOC 2 Type II (H1 2026)", Filename: "northwind-soc2-type2.pdf", Data: northwindSOC2}, actor); err != nil {
+			return err
+		}
+		if _, err := comp.UploadVendorDocument(ctx, orgID, v.ID, compliance.VendorDocInput{Kind: "dpa", Title: "Northwind DPA (signed)", Filename: "northwind-dpa.txt", Data: []byte("Data Processing Agreement between Acme Corp and Northwind Cloud Storage, Inc. Signed 2026-02-10.")}, actor); err != nil {
+			return err
+		}
+		d, err := comp.GetVendor(ctx, orgID, v.ID)
+		if err != nil {
+			return err
+		}
+		for _, a := range d.Assessments {
+			if a.Status == "pending" {
+				if err := comp.RunVendorAssessment(ctx, comp.AI, orgID, a.ID); err != nil {
+					return err
+				}
+			}
+		}
+		if _, err := comp.ApplyRecommendedTier(ctx, orgID, v.ID, actor); err != nil {
+			return err
+		}
+	}
+	if slack, ok := have["Slack"]; ok && slack.Status == "discovered" {
+		if _, err := comp.TriageVendor(ctx, orgID, slack.ID, true, actor); err != nil {
+			return err
+		}
+		if _, err := comp.UpdateVendor(ctx, orgID, slack.ID, compliance.VendorInput{Tier: ptr("medium"), DataAccess: ptr("internal"), OwnerMembershipID: ptr(members["ada@acme.test"].String())}, actor); err != nil {
+			return err
+		}
+		if _, err := comp.MarkVendorReviewed(ctx, orgID, slack.ID, actor); err != nil {
+			return err
+		}
+	}
+	if pid, err := comp.PlatformIntegrationID(ctx, orgID); err == nil && pid != nil {
+		if snap, err := comp.SyncIntegration(ctx, orgID, *pid, "seed"); err == nil && snap != nil {
+			if _, err := comp.RunTests(ctx, orgID, *snap, "seed"); err != nil {
+				return err
+			}
+		}
+	}
+	log.Info("seeded risks and vendors", "org", orgID)
+	return nil
 }

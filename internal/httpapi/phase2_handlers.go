@@ -19,6 +19,7 @@ func (s *Server) mountPhase2(r chi.Router) {
 	r.With(p(rbac.PoliciesWrite)).Post("/policies", s.createPolicy)
 	r.With(p(rbac.PoliciesRead)).Get("/policies/{id}", s.getPolicy)
 	r.With(p(rbac.PoliciesWrite)).Patch("/policies/{id}", s.updatePolicy)
+	r.With(p(rbac.PoliciesWrite)).Post("/controls/{id}/policies", s.linkControlPolicy)
 	r.With(p(rbac.PoliciesWrite)).Post("/policies/{id}/versions", s.newPolicyVersion)
 	r.With(p(rbac.PoliciesWrite)).Post("/policies/{id}/reviewed", s.markPolicyReviewed)
 	r.With(p(rbac.PoliciesWrite)).Put("/policy-versions/{id}", s.saveDraft)
@@ -88,24 +89,33 @@ func (s *Server) getPolicy(w http.ResponseWriter, r *http.Request) {
 func (s *Server) updatePolicy(w http.ResponseWriter, r *http.Request) {
 	s.withID(w, r, func(t Tenant, id domain.ID) {
 		var in struct {
-			OwnerMembershipID *string `json:"owner_membership_id"`
+			OwnerMembershipID *string   `json:"owner_membership_id"`
+			ControlCodes      *[]string `json:"control_codes"`
 		}
 		if err := decode(r, &in); err != nil {
 			s.fail(w, r, err)
 			return
 		}
-		var owner *domain.ID
-		if in.OwnerMembershipID != nil && *in.OwnerMembershipID != "" {
-			oid, err := domain.ParseID(*in.OwnerMembershipID)
-			if err != nil {
-				s.fail(w, r, domain.Invalid("owner_membership_id", "invalid id"))
+		if in.OwnerMembershipID != nil {
+			var owner *domain.ID
+			if *in.OwnerMembershipID != "" {
+				oid, err := domain.ParseID(*in.OwnerMembershipID)
+				if err != nil {
+					s.fail(w, r, domain.Invalid("owner_membership_id", "invalid id"))
+					return
+				}
+				owner = &oid
+			}
+			if err := s.comp.SetPolicyOwner(r.Context(), t.OrgID, id, owner, actorFrom(r)); err != nil {
+				s.fail(w, r, err)
 				return
 			}
-			owner = &oid
 		}
-		if err := s.comp.SetPolicyOwner(r.Context(), t.OrgID, id, owner, actorFrom(r)); err != nil {
-			s.fail(w, r, err)
-			return
+		if in.ControlCodes != nil {
+			if err := s.comp.SetPolicyControls(r.Context(), t.OrgID, id, *in.ControlCodes, actorFrom(r)); err != nil {
+				s.fail(w, r, err)
+				return
+			}
 		}
 		d, err := s.comp.GetPolicy(r.Context(), t.OrgID, id, true)
 		s.respond(w, r, 200, d, err)
@@ -384,5 +394,29 @@ func (s *Server) decideItem(w http.ResponseWriter, r *http.Request) {
 		}
 		it, err := s.comp.Decide(r.Context(), t.OrgID, id, in.Decision, in.Comment, actorFrom(r), t.Role, t.MembershipID)
 		s.respond(w, r, 200, it, err)
+	})
+}
+
+func (s *Server) linkControlPolicy(w http.ResponseWriter, r *http.Request) {
+	s.withID(w, r, func(t Tenant, id domain.ID) {
+		var in struct {
+			PolicyID string `json:"policy_id"`
+			Linked   bool   `json:"linked"`
+		}
+		if err := decode(r, &in); err != nil {
+			s.fail(w, r, err)
+			return
+		}
+		pid, err := domain.ParseID(in.PolicyID)
+		if err != nil {
+			s.fail(w, r, domain.Invalid("policy_id", "choose a policy"))
+			return
+		}
+		if err := s.comp.LinkPolicyToControl(r.Context(), t.OrgID, id, pid, in.Linked, actorFrom(r)); err != nil {
+			s.fail(w, r, err)
+			return
+		}
+		d, err := s.comp.GetControl(r.Context(), t.OrgID, id)
+		s.respond(w, r, 200, d, err)
 	})
 }

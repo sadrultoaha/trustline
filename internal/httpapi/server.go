@@ -114,6 +114,7 @@ func (s *Server) Handler() http.Handler {
 		api.Get("/invites/{token}", s.invitePreview)
 		if s.comp != nil {
 			api.Post("/agent/report", s.agentReport)
+			s.mountVendorPortal(api)
 		}
 		api.Post("/invites/{token}/accept", s.inviteAccept)
 
@@ -146,6 +147,7 @@ func (s *Server) Handler() http.Handler {
 				if s.comp != nil {
 					s.mountCompliance(t)
 					s.mountPhase2(t)
+					s.mountPhase3(t)
 				}
 				for _, m := range s.modules {
 					m(t)

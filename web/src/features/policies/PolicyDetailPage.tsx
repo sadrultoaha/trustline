@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { useMe, usePermissions } from '@/api/auth'
 import { errorMessage } from '@/api/client'
 import { membersQuery } from '@/api/org'
+import { controlsQuery } from '@/api/compliance'
 import { myWorkQuery, policyQuery, useSaveDraft, usePolicyAction, useVersionAction, type PolicyVersion } from '@/api/phase2'
 import { FormField } from '@/components/layout/FormField'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -213,16 +214,7 @@ function WriterView({ policyId }: { policyId: string }) {
                 ))}
               </Select>
             </FormField>
-            <div>
-              <div className="text-xs font-medium text-muted-foreground">Supports controls</div>
-              <div className="mt-1 flex flex-wrap gap-1">
-                {p.controls.map((c) => (
-                  <Badge key={c} variant="outline">
-                    {c}
-                  </Badge>
-                ))}
-              </div>
-            </div>
+            <ControlLinks codes={p.controls} onChange={(codes) => act.setControls.mutate(codes, { onSuccess: () => toast.success('Controls updated'), onError: (e) => toast.error(errorMessage(e)) })} />
           </CardContent>
         </Card>
 
@@ -405,5 +397,33 @@ function RejectDialog({ versionId, onClose }: { versionId: string; onClose: () =
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function ControlLinks({ codes, onChange }: { codes: string[]; onChange: (codes: string[]) => void }) {
+  const controls = useQuery(controlsQuery({}))
+  const options = (controls.data?.items ?? []).filter((c) => !codes.includes(c.code))
+  return (
+    <div data-testid="policy-controls">
+      <div className="text-xs font-medium text-muted-foreground">Supports controls</div>
+      <div className="mt-1 flex flex-wrap gap-1">
+        {codes.map((c) => (
+          <Badge key={c} variant="outline" className="gap-1">
+            {c}
+            <button aria-label={`Remove ${c}`} className="hover:text-destructive" onClick={() => onChange(codes.filter((x) => x !== c))}>
+              <XCircle className="h-3 w-3" />
+            </button>
+          </Badge>
+        ))}
+      </div>
+      <Select className="mt-2" value="" onChange={(e) => e.target.value && onChange([...codes, e.target.value])} data-testid="policy-add-control">
+        <option value="">Add a control…</option>
+        {options.map((c) => (
+          <option key={c.id} value={c.code}>
+            {c.code} · {c.name}
+          </option>
+        ))}
+      </Select>
+    </div>
   )
 }

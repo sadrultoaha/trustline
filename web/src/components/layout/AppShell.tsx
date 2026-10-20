@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate } from '@tanstack/react-router'
-import { Building2, Check, ChevronsUpDown, ClipboardCheck, FlaskConical, Inbox, Laptop, Layers, LayoutDashboard, ListChecks, ListTodo, LogOut, Plug, Plus, ScrollText, Settings, ShieldCheck, User, Users } from 'lucide-react'
+import { Building2, Check, ChevronsUpDown, ClipboardCheck, FlaskConical, Inbox, Laptop, Layers, LayoutDashboard, ListChecks, ListTodo, LogOut, Plug, Plus, ScrollText, Settings, ShieldAlert, ShieldCheck, Store, User, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLogout, useMe, usePermissions, useSwitchOrg } from '@/api/auth'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -20,6 +20,8 @@ const nav = [
   { to: '/app/people', label: 'People', icon: Users, exact: false, testid: 'nav-people', perm: 'people:read' },
   { to: '/app/devices', label: 'Devices', icon: Laptop, exact: false, testid: 'nav-devices', perm: 'people:read' },
   { to: '/app/access-reviews', label: 'Access reviews', icon: ClipboardCheck, exact: false, testid: 'nav-access-reviews', perm: 'controls:read' },
+  { to: '/app/risks', label: 'Risks', icon: ShieldAlert, exact: false, testid: 'nav-risks', perm: 'risks:read' },
+  { to: '/app/vendors', label: 'Vendors', icon: Store, exact: false, testid: 'nav-vendors', perm: 'vendors:read' },
   { to: '/app/my-work', label: 'My work', icon: Inbox, exact: false, testid: 'nav-my-work', perm: 'tasks:own' },
   { to: '/app/settings', label: 'Settings', icon: Settings, exact: false, testid: 'nav-settings', perm: '' },
 ] as const

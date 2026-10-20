@@ -120,6 +120,22 @@ type TrainingQuestion struct {
 	Explanation string   `yaml:"explanation" json:"-"`
 }
 
+type QuestionnaireQuestion struct {
+	ID       string   `yaml:"id" json:"id"`
+	Section  string   `yaml:"section" json:"section"`
+	Type     string   `yaml:"type" json:"type"` // yes_no | text | choice
+	Options  []string `yaml:"options" json:"options,omitempty"`
+	Question string   `yaml:"question" json:"question"`
+}
+
+// QuestionnaireTemplate is a questionnaire sent to vendors.
+type QuestionnaireTemplate struct {
+	ID          string                  `yaml:"id" json:"id"`
+	Title       string                  `yaml:"title" json:"title"`
+	Description string                  `yaml:"description" json:"description"`
+	Questions   []QuestionnaireQuestion `yaml:"questions" json:"questions"`
+}
+
 // TrainingCourse is the built-in security awareness course.
 type TrainingCourse struct {
 	ID           string             `yaml:"id" json:"id"`
@@ -133,12 +149,13 @@ type TrainingCourse struct {
 
 // Catalog is the parsed, validated content.
 type Catalog struct {
-	Controls   []Control
-	Frameworks []Framework
-	Tests      []Test
-	Connectors []Connector
-	Policies   []PolicyTemplate
-	Training   []TrainingCourse
+	Controls             []Control
+	Frameworks           []Framework
+	Tests                []Test
+	Connectors           []Connector
+	Policies             []PolicyTemplate
+	Training             []TrainingCourse
+	VendorQuestionnaires []QuestionnaireTemplate
 
 	controlByCode map[string]*Control
 	fieldIndex    map[string]map[string]map[string]Field // connector → resource → path → field
@@ -358,6 +375,25 @@ func parse(fsys fs.FS) (*Catalog, error) {
 			}
 		}
 		c.Training = append(c.Training, tc)
+	}
+	qFiles, _ := fs.Glob(fsys, "data/questionnaires/*.yaml")
+	for _, f := range qFiles {
+		var qt QuestionnaireTemplate
+		if err := readYAML(fsys, f, &qt); err != nil {
+			return nil, err
+		}
+		for _, q := range qt.Questions {
+			switch q.Type {
+			case "yes_no", "text":
+			case "choice":
+				if len(q.Options) < 2 {
+					return nil, fmt.Errorf("%s: %s needs options", f, q.ID)
+				}
+			default:
+				return nil, fmt.Errorf("%s: %s has unknown type %q", f, q.ID, q.Type)
+			}
+		}
+		c.VendorQuestionnaires = append(c.VendorQuestionnaires, qt)
 	}
 	return c, nil
 }

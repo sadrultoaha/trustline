@@ -381,6 +381,11 @@ func (s *Service) handleTransitions(ctx context.Context, tx pgx.Tx, orgID domain
 					return err
 				}
 			}
+			if t.Severity == "critical" {
+				if err := s.suggestRiskForTest(ctx, tx, orgID, t); err != nil {
+					return err
+				}
+			}
 		case (t.To == "pass" || t.To == "na") && (t.From == "fail" || t.From == "error"):
 			why := "Resolved automatically: the test passed on "
 			if t.To == "na" {

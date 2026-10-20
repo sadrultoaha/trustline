@@ -138,6 +138,8 @@ type ControlDetail struct {
 	Tests           []TestRow           `json:"tests"`
 	Evidence        []Evidence          `json:"evidence"`
 	OpenTasks       []TaskRow           `json:"open_tasks"`
+	Policies        []LinkedPolicy      `json:"policies"`
+	Risks           []Risk              `json:"risks"`
 }
 
 func (s *Service) GetControl(ctx context.Context, orgID, id domain.ID) (*ControlDetail, error) {
@@ -175,6 +177,13 @@ func (s *Service) GetControl(ctx context.Context, orgID, id domain.ID) (*Control
 		return nil, err
 	}
 	if d.OpenTasks, err = s.ListTasks(ctx, orgID, TaskFilter{ControlID: &id, Status: "open"}); err != nil {
+		return nil, err
+	}
+	if d.Policies, err = s.policiesForControl(ctx, orgID, c.Code); err != nil {
+		return nil, err
+	}
+	cid := id
+	if d.Risks, err = s.ListRisks(ctx, orgID, RiskFilter{ControlID: &cid}); err != nil {
 		return nil, err
 	}
 	return d, nil

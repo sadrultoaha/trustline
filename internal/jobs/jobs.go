@@ -247,3 +247,14 @@ func (PlatformSyncArgs) Kind() string { return "platform_sync" }
 func (PlatformSyncArgs) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{Queue: QueueSync, MaxAttempts: 3}
 }
+
+// VendorAssessmentArgs runs the AI review of vendor evidence.
+type VendorAssessmentArgs struct {
+	OrgID        string `json:"org_id"`
+	AssessmentID string `json:"assessment_id"`
+}
+
+func (VendorAssessmentArgs) Kind() string { return "vendor_assessment" }
+func (VendorAssessmentArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: QueueAI, MaxAttempts: 3}
+}

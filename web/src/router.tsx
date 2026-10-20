@@ -28,6 +28,11 @@ import { PoliciesPage } from '@/features/policies/PoliciesPage'
 import { PolicyDetailPage } from '@/features/policies/PolicyDetailPage'
 import { AccessReviewsPage } from '@/features/reviews/AccessReviewsPage'
 import { CampaignPage } from '@/features/reviews/CampaignPage'
+import { RiskDetailPage } from '@/features/risks/RiskDetailPage'
+import { RisksPage } from '@/features/risks/RisksPage'
+import { VendorDetailPage } from '@/features/vendors/VendorDetailPage'
+import { VendorPortalPage } from '@/features/vendors/VendorPortalPage'
+import { VendorsPage } from '@/features/vendors/VendorsPage'
 import { InvitePage } from '@/features/invite/InvitePage'
 import { OnboardingPage } from '@/features/onboarding/OnboardingPage'
 import { ActivityPage } from '@/features/settings/ActivityPage'
@@ -146,6 +151,12 @@ const reviewRoute = createRoute({ getParentRoute: () => appRoute, path: 'access-
 const myWorkRoute = createRoute({ getParentRoute: () => appRoute, path: 'my-work', component: MyWorkPage })
 const trainingRoute = createRoute({ getParentRoute: () => appRoute, path: 'training', component: TrainingPage })
 
+const risksRoute = createRoute({ getParentRoute: () => appRoute, path: 'risks', component: RisksPage })
+const riskRoute = createRoute({ getParentRoute: () => appRoute, path: 'risks/$id', component: RiskDetailPage })
+const vendorsRoute = createRoute({ getParentRoute: () => appRoute, path: 'vendors', component: VendorsPage })
+const vendorRoute = createRoute({ getParentRoute: () => appRoute, path: 'vendors/$id', component: VendorDetailPage })
+const portalRoute = createRoute({ getParentRoute: () => rootRoute, path: '/vendor-portal/$token', component: VendorPortalPage })
+
 const settingsRoute = createRoute({ getParentRoute: () => appRoute, path: 'settings', component: SettingsLayout })
 const settingsIndexRoute = createRoute({
   getParentRoute: () => settingsRoute,
@@ -167,6 +178,7 @@ const routeTree = rootRoute.addChildren([
   resetRoute,
   inviteRoute,
   onboardingRoute,
+  portalRoute,
   appRoute.addChildren([
     dashboardRoute,
     frameworksRoute,
@@ -189,6 +201,10 @@ const routeTree = rootRoute.addChildren([
     reviewRoute,
     myWorkRoute,
     trainingRoute,
+    risksRoute,
+    riskRoute,
+    vendorsRoute,
+    vendorRoute,
     settingsRoute.addChildren([settingsIndexRoute, settingsOrgRoute, settingsMembersRoute, settingsActivityRoute, settingsProfileRoute]),
   ]),
 ])

@@ -354,6 +354,10 @@ func (s *Service) SyncIntegration(ctx context.Context, orgID, id domain.ID, trig
 			if err := s.reconcile(ctx, tx, orgID, people, pols); err != nil {
 				return fmt.Errorf("reconcile: %w", err)
 			}
+		case "google_workspace", "okta":
+			if err := s.discoverVendors(ctx, tx, orgID, typ, resources); err != nil {
+				return fmt.Errorf("vendor discovery: %w", err)
+			}
 		}
 		return s.Jobs.EnqueueTx(ctx, tx, jobs.RunTestsArgs{OrgID: orgID.String(), SnapshotID: snapID.String(), Trigger: trigger})
 	})

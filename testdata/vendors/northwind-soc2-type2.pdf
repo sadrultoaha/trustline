@@ -1,0 +1,620 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+3 0 obj
+<< /Length 920 >>
+stream
+BT
+/F1 8 Tf
+50 810 Td
+(Northwind Cloud Storage - SOC 2 Type II - Cover) Tj
+ET
+BT
+/F2 22 Tf
+50 738 Td
+(Northwind Cloud Storage, Inc.) Tj
+ET
+BT
+/F2 15 Tf
+50 713 Td
+(SOC 2 Type II Report) Tj
+ET
+BT
+/F1 10 Tf
+50 698 Td
+(Report on Northwind's Description of Its Object Storage Platform and on the) Tj
+ET
+BT
+/F1 10 Tf
+50 683 Td
+(Suitability of the Design and Operating Effectiveness of Its Controls Relevant) Tj
+ET
+BT
+/F1 10 Tf
+50 668 Td
+(to Security, Availability and Confidentiality) Tj
+ET
+BT
+/F1 10 Tf
+50 653 Td
+() Tj
+ET
+BT
+/F1 10 Tf
+50 638 Td
+(For the period January 1, 2026 to June 30, 2026) Tj
+ET
+BT
+/F1 10 Tf
+50 623 Td
+() Tj
+ET
+BT
+/F1 10 Tf
+50 608 Td
+(Prepared by: Halvorsen & Ruiz LLP, Certified Public Accountants) Tj
+ET
+BT
+/F1 10 Tf
+50 593 Td
+(Report date: August 14, 2026) Tj
+ET
+BT
+/F1 10 Tf
+50 578 Td
+(CONFIDENTIAL - for use by Northwind customers and their auditors only) Tj
+ET
+BT
+/F1 8 Tf
+290 30 Td
+(Page 1) Tj
+ET
+endstream
+endobj
+4 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 595 842] /Contents 3 0 R /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> >>
+endobj
+5 0 obj
+<< /Length 643 >>
+stream
+BT
+/F1 8 Tf
+50 810 Td
+(Northwind Cloud Storage - SOC 2 Type II - Table of Contents) Tj
+ET
+BT
+/F2 15 Tf
+50 745 Td
+(Table of Contents) Tj
+ET
+BT
+/F1 10 Tf
+50 730 Td
+(Section 1  Independent Service Auditor's Report ............ 3) Tj
+ET
+BT
+/F1 10 Tf
+50 715 Td
+(Section 2  Management's Assertion ......................... 4) Tj
+ET
+BT
+/F1 10 Tf
+50 700 Td
+(Section 3  Description of the System ...................... 5) Tj
+ET
+BT
+/F1 10 Tf
+50 685 Td
+(Section 4  Trust Services Criteria, Controls and Results ... 6) Tj
+ET
+BT
+/F1 10 Tf
+50 670 Td
+(Section 5  Other Information Provided by Management ........ 9) Tj
+ET
+BT
+/F1 8 Tf
+290 30 Td
+(Page 2) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 595 842] /Contents 5 0 R /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> >>
+endobj
+7 0 obj
+<< /Length 1653 >>
+stream
+BT
+/F1 8 Tf
+50 810 Td
+(Northwind Cloud Storage - SOC 2 Type II - Section 1 Independent Service Auditor's Report) Tj
+ET
+BT
+/F2 15 Tf
+50 745 Td
+(Section 1 - Independent Service Auditor's Report) Tj
+ET
+BT
+/F1 10 Tf
+50 730 Td
+(To the Management of Northwind Cloud Storage, Inc.:) Tj
+ET
+BT
+/F1 10 Tf
+50 715 Td
+(We have examined Northwind's description of its object storage platform for the) Tj
+ET
+BT
+/F1 10 Tf
+50 700 Td
+(period January 1, 2026 to June 30, 2026 and the suitability of the design and) Tj
+ET
+BT
+/F1 10 Tf
+50 685 Td
+(operating effectiveness of controls to provide reasonable assurance that the) Tj
+ET
+BT
+/F1 10 Tf
+50 670 Td
+(service commitments and system requirements were achieved based on the trust) Tj
+ET
+BT
+/F1 10 Tf
+50 655 Td
+(services criteria relevant to security, availability and confidentiality.) Tj
+ET
+BT
+/F2 12 Tf
+50 638 Td
+(Opinion) Tj
+ET
+BT
+/F1 10 Tf
+50 623 Td
+(In our opinion, in all material respects, the description presents the system) Tj
+ET
+BT
+/F1 10 Tf
+50 608 Td
+(that was designed and implemented throughout the period, and the controls stated) Tj
+ET
+BT
+/F1 10 Tf
+50 593 Td
+(in the description were suitably designed and operated effectively throughout the) Tj
+ET
+BT
+/F1 10 Tf
+50 578 Td
+(period. This is an unqualified opinion.) Tj
+ET
+BT
+/F2 12 Tf
+50 561 Td
+(Exceptions) Tj
+ET
+BT
+/F1 10 Tf
+50 546 Td
+(Our tests identified two exceptions, described in Section 4 for criteria CC6.2) Tj
+ET
+BT
+/F1 10 Tf
+50 531 Td
+(and CC7.1. These exceptions did not result in a modification of our opinion.) Tj
+ET
+BT
+/F1 10 Tf
+50 516 Td
+(Halvorsen & Ruiz LLP, Seattle, Washington, August 14, 2026) Tj
+ET
+BT
+/F1 8 Tf
+290 30 Td
+(Page 3) Tj
+ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 595 842] /Contents 7 0 R /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> >>
+endobj
+9 0 obj
+<< /Length 631 >>
+stream
+BT
+/F1 8 Tf
+50 810 Td
+(Northwind Cloud Storage - SOC 2 Type II - Section 2 Management's Assertion) Tj
+ET
+BT
+/F2 15 Tf
+50 745 Td
+(Section 2 - Management's Assertion) Tj
+ET
+BT
+/F1 10 Tf
+50 730 Td
+(We have prepared the accompanying description of Northwind's object storage) Tj
+ET
+BT
+/F1 10 Tf
+50 715 Td
+(platform and confirm that the controls were suitably designed and operated) Tj
+ET
+BT
+/F1 10 Tf
+50 700 Td
+(effectively throughout the period January 1, 2026 to June 30, 2026.) Tj
+ET
+BT
+/F1 10 Tf
+50 685 Td
+(Signed: Priya Raman, Chief Executive Officer; Marcus Lee, Chief Security Officer) Tj
+ET
+BT
+/F1 8 Tf
+290 30 Td
+(Page 4) Tj
+ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 595 842] /Contents 9 0 R /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> >>
+endobj
+11 0 obj
+<< /Length 1231 >>
+stream
+BT
+/F1 8 Tf
+50 810 Td
+(Northwind Cloud Storage - SOC 2 Type II - Section 3 Description of the System) Tj
+ET
+BT
+/F2 15 Tf
+50 745 Td
+(Section 3 - Description of the System) Tj
+ET
+BT
+/F2 12 Tf
+50 728 Td
+(Services provided) Tj
+ET
+BT
+/F1 10 Tf
+50 713 Td
+(Northwind provides encrypted object storage, backup and file sharing APIs to) Tj
+ET
+BT
+/F1 10 Tf
+50 698 Td
+(business customers. Customer data is encrypted at rest with AES-256 and in) Tj
+ET
+BT
+/F1 10 Tf
+50 683 Td
+(transit with TLS 1.2 or higher.) Tj
+ET
+BT
+/F2 12 Tf
+50 666 Td
+(Subservice organizations) Tj
+ET
+BT
+/F1 10 Tf
+50 651 Td
+(Subservice organization: Amazon Web Services \(infrastructure hosting, carve-out method\)) Tj
+ET
+BT
+/F1 10 Tf
+50 636 Td
+(Subservice organization: Okta, Inc. \(workforce identity, carve-out method\)) Tj
+ET
+BT
+/F2 12 Tf
+50 619 Td
+(Complementary user entity controls) Tj
+ET
+BT
+/F1 10 Tf
+50 604 Td
+(CUEC-1: Customers are responsible for managing their users' API keys and rotating them.) Tj
+ET
+BT
+/F1 10 Tf
+50 589 Td
+(CUEC-2: Customers are responsible for removing access for their departed personnel.) Tj
+ET
+BT
+/F1 10 Tf
+50 574 Td
+(CUEC-3: Customers are responsible for classifying data before uploading it.) Tj
+ET
+BT
+/F1 8 Tf
+290 30 Td
+(Page 5) Tj
+ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 595 842] /Contents 11 0 R /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> >>
+endobj
+13 0 obj
+<< /Length 1207 >>
+stream
+BT
+/F1 8 Tf
+50 810 Td
+(Northwind Cloud Storage - SOC 2 Type II - Section 4 Trust Services Criteria, Controls and Results) Tj
+ET
+BT
+/F2 15 Tf
+50 745 Td
+(Section 4 - Trust Services Criteria, Controls, Tests and Results) Tj
+ET
+BT
+/F1 10 Tf
+50 730 Td
+(Criteria | Control | Result) Tj
+ET
+BT
+/F1 10 Tf
+50 715 Td
+(CC1.1 | Code of conduct acknowledged by personnel annually | No exceptions noted) Tj
+ET
+BT
+/F1 10 Tf
+50 700 Td
+(CC1.4 | Background checks performed for new hires | No exceptions noted) Tj
+ET
+BT
+/F1 10 Tf
+50 685 Td
+(CC2.1 | Security policies reviewed and approved annually | No exceptions noted) Tj
+ET
+BT
+/F1 10 Tf
+50 670 Td
+(CC3.1 | Annual risk assessment performed and reviewed by leadership | No exceptions noted) Tj
+ET
+BT
+/F1 10 Tf
+50 655 Td
+(CC5.2 | Security awareness training completed on hire and annually | No exceptions noted) Tj
+ET
+BT
+/F1 10 Tf
+50 640 Td
+(CC6.1 | MFA enforced for workforce and production access | No exceptions noted) Tj
+ET
+BT
+/F1 10 Tf
+50 625 Td
+(CC6.2 | Access removed within one business day of termination | Exception noted) Tj
+ET
+BT
+/F1 10 Tf
+50 610 Td
+(CC6.3 | Quarterly user access reviews performed | No exceptions noted) Tj
+ET
+BT
+/F1 8 Tf
+290 30 Td
+(Page 6) Tj
+ET
+endstream
+endobj
+14 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 595 842] /Contents 13 0 R /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> >>
+endobj
+15 0 obj
+<< /Length 1347 >>
+stream
+BT
+/F1 8 Tf
+50 810 Td
+(Northwind Cloud Storage - SOC 2 Type II - Section 4 Trust Services Criteria, Controls and Results) Tj
+ET
+BT
+/F1 10 Tf
+50 755 Td
+(Criteria | Control | Result) Tj
+ET
+BT
+/F1 10 Tf
+50 740 Td
+(CC6.6 | Production network restricted by firewalls and security groups | No exceptions noted) Tj
+ET
+BT
+/F1 10 Tf
+50 725 Td
+(CC6.7 | Data encrypted in transit with TLS 1.2 or higher | No exceptions noted) Tj
+ET
+BT
+/F1 10 Tf
+50 710 Td
+(CC6.8 | Endpoint protection deployed on workstations | No exceptions noted) Tj
+ET
+BT
+/F1 10 Tf
+50 695 Td
+(CC7.1 | Vulnerability scans run monthly and critical findings fixed in 30 days | Exception noted) Tj
+ET
+BT
+/F1 10 Tf
+50 680 Td
+(CC7.2 | Security events monitored and alerts triaged | No exceptions noted) Tj
+ET
+BT
+/F1 10 Tf
+50 665 Td
+(CC7.4 | Incident response plan tested annually | No exceptions noted) Tj
+ET
+BT
+/F1 10 Tf
+50 650 Td
+(CC8.1 | Changes peer reviewed and tested before deployment | No exceptions noted) Tj
+ET
+BT
+/F1 10 Tf
+50 635 Td
+(CC9.2 | Vendors assessed before onboarding and annually | No exceptions noted) Tj
+ET
+BT
+/F1 10 Tf
+50 620 Td
+(A1.2 | Backups performed daily and restores tested quarterly | No exceptions noted) Tj
+ET
+BT
+/F1 10 Tf
+50 605 Td
+(C1.1 | Confidential data identified and retained per schedule | No exceptions noted) Tj
+ET
+BT
+/F1 8 Tf
+290 30 Td
+(Page 7) Tj
+ET
+endstream
+endobj
+16 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 595 842] /Contents 15 0 R /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> >>
+endobj
+17 0 obj
+<< /Length 665 >>
+stream
+BT
+/F1 8 Tf
+50 810 Td
+(Northwind Cloud Storage - SOC 2 Type II - Section 4 Trust Services Criteria, Controls and Results) Tj
+ET
+BT
+/F2 12 Tf
+50 753 Td
+(Description of exceptions) Tj
+ET
+BT
+/F1 10 Tf
+50 738 Td
+(Exception CC6.2: For 2 of 25 sampled terminated employees, access to the internal) Tj
+ET
+BT
+/F1 10 Tf
+50 723 Td
+(administration console was removed 4 and 6 business days after termination.) Tj
+ET
+BT
+/F1 10 Tf
+50 708 Td
+(Exception CC7.1: For 1 of 6 monthly scans sampled, two critical vulnerabilities were) Tj
+ET
+BT
+/F1 10 Tf
+50 693 Td
+(remediated 41 days after detection, exceeding the 30-day remediation target.) Tj
+ET
+BT
+/F1 8 Tf
+290 30 Td
+(Page 8) Tj
+ET
+endstream
+endobj
+18 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 595 842] /Contents 17 0 R /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> >>
+endobj
+19 0 obj
+<< /Length 723 >>
+stream
+BT
+/F1 8 Tf
+50 810 Td
+(Northwind Cloud Storage - SOC 2 Type II - Section 5 Other Information Provided by Management) Tj
+ET
+BT
+/F2 15 Tf
+50 745 Td
+(Section 5 - Other Information Provided by Management) Tj
+ET
+BT
+/F2 12 Tf
+50 728 Td
+(Management's response to exceptions) Tj
+ET
+BT
+/F1 10 Tf
+50 713 Td
+(Response CC6.2: Offboarding is now automated from the HR system; console access is) Tj
+ET
+BT
+/F1 10 Tf
+50 698 Td
+(revoked through SSO deprovisioning on the termination date.) Tj
+ET
+BT
+/F1 10 Tf
+50 683 Td
+(Response CC7.1: A dedicated on-call rotation now owns critical vulnerability fixes and) Tj
+ET
+BT
+/F1 10 Tf
+50 668 Td
+(progress is reviewed weekly by the Chief Security Officer.) Tj
+ET
+BT
+/F1 8 Tf
+290 30 Td
+(Page 9) Tj
+ET
+endstream
+endobj
+20 0 obj
+<< /Type /Page /Parent 21 0 R /MediaBox [0 0 595 842] /Contents 19 0 R /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> >>
+endobj
+21 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R 8 0 R 10 0 R 12 0 R 14 0 R 16 0 R 18 0 R 20 0 R] /Count 9 >>
+endobj
+22 0 obj
+<< /Type /Catalog /Pages 21 0 R >>
+endobj
+23 0 obj
+<< /Title (Northwind Cloud Storage SOC 2 Type II Report) /Producer (Trustline testdata) >>
+endobj
+xref
+0 24
+0000000000 65535 f 
+0000000015 00000 n 
+0000000112 00000 n 
+0000000214 00000 n 
+0000001185 00000 n 
+0000001322 00000 n 
+0000002016 00000 n 
+0000002153 00000 n 
+0000003858 00000 n 
+0000003995 00000 n 
+0000004677 00000 n 
+0000004815 00000 n 
+0000006099 00000 n 
+0000006238 00000 n 
+0000007498 00000 n 
+0000007637 00000 n 
+0000009037 00000 n 
+0000009176 00000 n 
+0000009893 00000 n 
+0000010032 00000 n 
+0000010807 00000 n 
+0000010946 00000 n 
+0000011058 00000 n 
+0000011109 00000 n 
+trailer
+<< /Size 24 /Root 22 0 R /Info 23 0 R >>
+startxref
+11216
+%%EOF

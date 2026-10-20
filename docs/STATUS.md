@@ -77,12 +77,32 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏸ deferred (reason in D
 | Access review campaigns: pull users/roles per integration, manager reviewers, keep/revoke, verified revocation tasks, CSV export as IAM-04 evidence, scheduled campaigns | ✅ | Go `TestAccessReviewCampaign`, E2E `09-access-reviews` |
 | Platform connector: policy/person/device/access-review tests on the rule engine (18 tests) | ✅ | |
 | Cross-tenant tests for Phase 2 endpoints | ✅ | `TestPhase2TenantIsolation` |
-| Linked policies on the control detail page | 🟡 | policies list the controls they support; showing them on the control page is a small follow-up |
+| Policy ↔ control linking from both sides (control page "Policies" card, policy page "Supports controls") | ✅ | done in Phase 3 work: Go `TestPolicyControlLinks`, E2E `12-policy-control-links` |
 | SCIM / CSV HRIS import | ⏸ | BambooHR-style sandbox connector covers the flow; CSV/SCIM import with the live clients in Phase 6 |
 | MDM integrations (Jamf, Intune, Kandji) | ⏸ | the agent endpoint covers device compliance; MDM API connectors in Phase 6 |
 
-## Phase 3 — Risk, Vendors
-⬜ not started
+## Phase 3 — Risk, Vendors (Modules 4, 5)
+
+| Item | Status | Notes |
+|---|---|---|
+| Risk register: likelihood × impact (5×5), inherent and residual scores, levels, categories | ✅ | |
+| Heatmap (inherent and residual), click a cell to filter | ✅ | |
+| Treatment (mitigate/accept/transfer/avoid), plans, owners, statuses | ✅ | |
+| Risk ↔ control links, shown on both pages | ✅ | |
+| Review cadence: per-risk cycle, daily reminder job, tasks, mark reviewed | ✅ | |
+| "Complete with AI" risk assessment from failing tests, systems, vendors and people | ✅ | `risk_assessment.v1`; results are suggestions, never auto-accepted |
+| Acceptance: new failing test on a critical control → suggested risk → accept links them | ✅ | Go `TestCriticalFailureRaisesSuggestedRisk`, E2E `10-risks` |
+| Platform tests for risks and vendors (RSK-01/02, VEN-01/02/03) | ✅ | 8 rule-engine tests on the built-in connector |
+| Vendor inventory: manual entry + discovery from Google Workspace OAuth grants and Okta apps | ✅ | discovered vendors wait for triage (add or dismiss); dismissals can be restored from the Dismissed tab |
+| Tiering (critical/high/medium/low), data access, PII, owner, review cycle by tier | ✅ | |
+| Document upload (SOC 2 I/II, ISO 27001, pen test, DPA, BAA, insurance, other) with expiry | ✅ | blob storage |
+| Security questionnaire (20 questions) by magic link, public vendor portal, save draft + submit | ✅ | token hashed, 30-day expiry, rate limited |
+| AI vendor review of a SOC 2 report or questionnaire answers: opinion, controls tested, exceptions, CUECs, subservice orgs, risk summary, recommended tier | ✅ | `vendor_assessment.v1`; PDF text from `internal/pdftext` |
+| Acceptance: sample SOC 2 PDF in `/testdata` → assessment with page and section citations | ✅ | Go `TestVendorSOC2AssessmentWithCitations`, E2E `11-vendors` |
+| Cross-tenant tests for Phase 3 endpoints (including the portal token) | ✅ | `TestPhase3TenantIsolation` |
+| Seed: 5 risks with owners and controls, AI suggestions, Northwind (SOC 2 + DPA, assessed), Slack, discovered apps | ✅ | |
+| Scanned (image-only) PDFs | ⏸ | no OCR; the review says no text was found. With `AI_MODE=anthropic` the PDF could go to Claude as a document block — Phase 5 |
+| Vendor discovery from other SSO providers (Entra ID, JumpCloud) | ⏸ | connectors arrive with the live clients in Phase 6 |
 
 ## Phase 4 — Audit hub, Trust Center, Questionnaires
 ⬜ not started

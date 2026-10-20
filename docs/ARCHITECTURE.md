@@ -428,3 +428,38 @@ AWS data and assigns each account to the owner's manager (from the HRIS), fallin
 creator. Reviewers keep or revoke from My work or the campaign page; revocations open verified
 removal tasks. Completing a campaign files the CSV export as passing evidence on IAM-04. A daily
 job opens a campaign when the org's `access_review_days` cadence has elapsed.
+
+## 14. Risks and vendors (Phase 3)
+
+### Risks
+`risks` holds likelihood and impact (1–5), optional residual values, treatment, plan, owner,
+status (`suggested → open → in_treatment → accepted/closed`, or `dismissed`) and source
+(`manual`, `ai`, `test`). `risk_controls` links risks to controls. Suggestions come from two
+places:
+
+- **Failing critical tests.** When a test with severity `critical` goes from passing to failing,
+  the test-run transaction inserts a suggested risk (likelihood 4, impact 5) linked to the test's
+  control and notifies admins. `source_key = test:<id>` with a unique partial index keeps it to one
+  live suggestion per test.
+- **Complete with AI.** `CompleteWithAI` gathers failing tests, connected systems, vendors and
+  departments and calls `risk_assessment.v1`. Each result becomes a suggestion; the run is stored
+  in `risk_assessments` and counts as the annual assessment for RSK-01.
+
+Accepting a suggestion makes it `open` and assigns the acting member as owner if none is set.
+A daily job opens review tasks for risks past their review cycle.
+
+### Vendors
+`vendors` are created manually or by discovery. Google Workspace OAuth grants and Okta apps are
+matched against a table of known SaaS apps during that integration's sync; unknown apps are kept
+with their client name. Discovered vendors stay in `discovered` until someone adds or dismisses
+them, and discovery never changes a triaged vendor.
+
+Documents go to blob storage (`vendor_documents`). Uploading a SOC 2, ISO 27001 or pen-test report
+queues a `vendor_assessment` job: `internal/pdftext` extracts text per page and the AI task returns
+the opinion, controls tested, exceptions, CUECs and subservice organizations, each with a citation
+(page, section, quote), plus a risk summary and recommended tier. The tier is applied only when a
+person clicks **Apply**.
+
+Questionnaires use a random token; only its SHA-256 is stored. The public portal
+(`/api/v1/vendor-portal/{token}`, rate limited) needs no account, saves drafts, locks on submit
+and then queues an assessment of the answers.

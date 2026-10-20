@@ -281,7 +281,10 @@ func (s *Service) buildPlatformSnapshot(ctx context.Context, q db.Querier, orgID
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	res := map[string][]map[string]any{"policy": {}, "person": {}, "device": {}, "access_review_program": {}}
+	res := map[string][]map[string]any{"policy": {}, "person": {}, "device": {}, "access_review_program": {}, "risk": {}, "risk_program": {}, "vendor": {}}
+	if err := s.riskAndVendorResources(ctx, q, orgID, res); err != nil {
+		return nil, nil, nil, err
+	}
 	pols, err := s.loadPolicyFacts(ctx, q, orgID)
 	if err != nil {
 		return nil, nil, nil, err
@@ -504,4 +507,49 @@ func keys(m map[string]bool) []string {
 		out = append(out, k)
 	}
 	return out
+}
+
+func (s *Service) riskAndVendorResources(ctx context.Context, q db.Querier, orgID domain.ID, res map[string][]map[string]any) error {
+	rows, err := q.Query(ctx, `SELECT r.id, r.title, r.status, r.likelihood * r.impact, COALESCE(r.residual_likelihood * r.residual_impact, r.likelihood * r.impact), r.treatment,
+		r.owner_membership_id IS NOT NULL, length(trim(r.treatment_plan)) > 0, COALESCE(r.next_review_at < now(), false),
+		(SELECT count(*) FROM risk_controls rc WHERE rc.risk_id = r.id)
+		FROM risks r WHERE r.org_id = $1 AND r.status IN ('open','in_treatment','accepted','closed')`, orgID)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var id domain.ID
+		var title, status, treatment string
+		var score, residual, linked int
+		var owner, plan, overdue bool
+		if err := rows.Scan(&id, &title, &status, &score, &residual, &treatment, &owner, &plan, &overdue, &linked); err != nil {
+			rows.Close()
+			return err
+		}
+		res["risk"] = append(res["risk"], map[string]any{"id": id.String(), "title": title, "status": status, "score": score, "residual_score": residual, "treatment": treatment,
+			"has_owner": owner, "has_treatment_plan": plan, "review_overdue": overdue, "linked_controls": linked})
+	}
+	rows.Close()
+	var last *time.Time
+	var open, suggested int
+	if err := q.QueryRow(ctx, `SELECT (SELECT max(created_at) FROM risk_assessments WHERE org_id = $1),
+		(SELECT count(*) FROM risks WHERE org_id = $1 AND status IN ('open','in_treatment')),
+		(SELECT count(*) FROM risks WHERE org_id = $1 AND status = 'suggested')`, orgID).Scan(&last, &open, &suggested); err != nil {
+		return err
+	}
+	res["risk_program"] = append(res["risk_program"], map[string]any{"id": "risk-management", "last_assessment_days": daysSince(last), "open_risks": open, "suggested_risks": suggested})
+	vendors, err := s.ListVendors(ctx, orgID, "")
+	if err != nil {
+		return err
+	}
+	for _, v := range vendors {
+		if v.Status == "offboarded" {
+			continue
+		}
+		assessed := v.LastReviewedAt != nil && v.LastReviewedAt.After(time.Now().Add(-time.Duration(v.ReviewCycleDays)*24*time.Hour))
+		res["vendor"] = append(res["vendor"], map[string]any{"id": v.Name, "status": v.Status, "tier": v.Tier, "data_access": v.DataAccess, "handles_pii": v.HandlesPII,
+			"has_owner": v.Owner != nil, "has_security_report": v.HasReport, "has_dpa": v.HasDPA, "assessed": assessed, "review_overdue": v.ReviewOverdue,
+			"discovered_days": daysSince(v.DiscoveredAt)})
+	}
+	return nil
 }

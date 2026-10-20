@@ -350,3 +350,37 @@ trustline:
         overdue: {type: bool, label: Review overdue for the configured cadence}
         open_campaigns: {type: number, label: Open campaigns}
         overdue_campaigns: {type: number, label: Open campaigns past their due date}
+    risk:
+      label: Risk
+      fields:
+        id: {type: string, label: Risk ID}
+        title: {type: string, label: Title}
+        status: {type: string, label: "Status (open, in_treatment, accepted, closed)"}
+        score: {type: number, label: Inherent score (likelihood × impact)}
+        residual_score: {type: number, label: Residual score}
+        treatment: {type: string, label: Treatment}
+        has_owner: {type: bool, label: Has an owner}
+        has_treatment_plan: {type: bool, label: Has a treatment plan}
+        review_overdue: {type: bool, label: Review overdue}
+        linked_controls: {type: number, label: Linked controls}
+    risk_program:
+      label: Risk management program
+      fields:
+        id: {type: string, label: Program}
+        last_assessment_days: {type: number, label: Days since the last risk assessment}
+        open_risks: {type: number, label: Open risks}
+        suggested_risks: {type: number, label: Suggested risks awaiting triage}
+    vendor:
+      label: Vendor
+      fields:
+        id: {type: string, label: Vendor}
+        status: {type: string, label: "Status (discovered, active, offboarded)"}
+        tier: {type: string, label: "Tier (critical, high, medium, low, unassessed)"}
+        data_access: {type: string, label: "Data access (none, internal, confidential, restricted)"}
+        handles_pii: {type: bool, label: Processes personal data}
+        has_owner: {type: bool, label: Has an owner}
+        has_security_report: {type: bool, label: Has a current SOC 2 / ISO report}
+        has_dpa: {type: bool, label: Has a signed DPA or BAA}
+        assessed: {type: bool, label: Assessed within its review cycle}
+        review_overdue: {type: bool, label: Review overdue}
+        discovered_days: {type: number, label: Days since discovery (untriaged vendors)}

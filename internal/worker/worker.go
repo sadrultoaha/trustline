@@ -43,6 +43,7 @@ func Register(w *river.Workers, d *Deps) {
 	river.AddWorker(w, &consistencyWorker{d: d})
 	river.AddWorker(w, &dailyWorker{d: d})
 	river.AddWorker(w, &platformWorker{d: d})
+	river.AddWorker(w, &vendorAssessmentWorker{d: d})
 }
 
 // Periodic returns the schedules: connector syncs every interval, evidence expiry daily.
@@ -260,6 +261,12 @@ func (w *dailyWorker) Work(ctx context.Context, _ *river.Job[jobs.DailyMaintenan
 	if err := c.TrainingRenewals(ctx); err != nil {
 		return fmt.Errorf("training renewals: %w", err)
 	}
+	if err := c.RiskReviewReminders(ctx); err != nil {
+		return fmt.Errorf("risk reviews: %w", err)
+	}
+	if err := c.VendorReviewReminders(ctx); err != nil {
+		return fmt.Errorf("vendor reviews: %w", err)
+	}
 	return nil
 }
 
@@ -279,4 +286,21 @@ func (w *platformWorker) Work(ctx context.Context, job *river.Job[jobs.PlatformS
 	}
 	_, err = w.d.Compliance.SyncIntegration(ctx, org, *id, "platform")
 	return err
+}
+
+type vendorAssessmentWorker struct {
+	river.WorkerDefaults[jobs.VendorAssessmentArgs]
+	d *Deps
+}
+
+func (w *vendorAssessmentWorker) Work(ctx context.Context, job *river.Job[jobs.VendorAssessmentArgs]) error {
+	org, id, err := ids(job.Args.OrgID, job.Args.AssessmentID)
+	if err != nil {
+		return river.JobCancel(err)
+	}
+	return w.d.Compliance.RunVendorAssessment(ctx, w.d.AI, org, id)
+}
+
+func (w *vendorAssessmentWorker) Timeout(*river.Job[jobs.VendorAssessmentArgs]) time.Duration {
+	return 5 * time.Minute
 }

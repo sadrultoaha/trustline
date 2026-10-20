@@ -226,6 +226,7 @@ export function usePolicyAction(policyId: string) {
     newVersion: useMutation({ mutationFn: () => api.post<PolicyVersion>(`/policies/${policyId}/versions`), onSuccess: done }),
     markReviewed: useMutation({ mutationFn: () => api.post(`/policies/${policyId}/reviewed`), onSuccess: done }),
     setOwner: useMutation({ mutationFn: (owner: string) => api.patch(`/policies/${policyId}`, { owner_membership_id: owner }), onSuccess: done }),
+    setControls: useMutation({ mutationFn: (codes: string[]) => api.patch(`/policies/${policyId}`, { control_codes: codes }), onSuccess: () => { done(); } }),
   }
 }
 export function useSaveDraft() {

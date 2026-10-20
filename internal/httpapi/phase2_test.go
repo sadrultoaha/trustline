@@ -192,8 +192,14 @@ func connectSandbox(t *testing.T, c *testutil.Client, typ string, creds obj) str
 func syncAndWait(t *testing.T, c *testutil.Client, id string) {
 	t.Helper()
 	before := c.Get("/api/v1/integrations/" + id).Body["last_sync_at"]
-	c.Must(c.Post("/api/v1/integrations/"+id+"/sync", obj{}), 202)
-	testutil.Eventually(t, 30*time.Second, "sync completes", func() bool {
+	// A request that lands while the previous sync job is still marked running
+	// is deduplicated by River, so re-request until a new sync is observed.
+	var asked time.Time
+	testutil.Eventually(t, 60*time.Second, "sync completes", func() bool {
+		if time.Since(asked) > 10*time.Second {
+			c.Must(c.Post("/api/v1/integrations/"+id+"/sync", obj{}), 202)
+			asked = time.Now()
+		}
 		b := c.Get("/api/v1/integrations/" + id).Body
 		return b["last_sync_at"] != before && b["status"] == "connected"
 	})
@@ -475,5 +481,38 @@ func TestPhase2TenantIsolation(t *testing.T) {
 	}
 	if len(items(a.Get("/api/v1/policies"))) != 0 || len(items(a.Get("/api/v1/people"))) != 0 {
 		t.Error("tenant A should see no policies or people")
+	}
+}
+
+func TestPolicyControlLinks(t *testing.T) {
+	app := testutil.NewApp(t)
+	admin := app.Signup(t, testutil.Unique("ln")+"@example.test", testutil.Unique("Links Co"))
+	admin.Must(admin.Post("/api/v1/frameworks/soc2/adopt", obj{}), 200)
+	p := admin.Must(admin.Post("/api/v1/policies", obj{"template_id": "password"}), 201).Body
+	pid := p["id"].(string)
+	// Template controls are linked automatically.
+	iam06 := controlByCode(t, admin, "IAM-06")
+	d := admin.Must(admin.Get("/api/v1/controls/"+iam06["id"].(string)), 200).Body
+	if len(d["policies"].([]any)) != 1 || d["policies"].([]any)[0].(obj)["id"] != pid {
+		t.Fatalf("password policy should support IAM-06: %v", d["policies"])
+	}
+	// Link from the control page.
+	ir01 := controlByCode(t, admin, "IR-01")
+	d = admin.Must(admin.Post("/api/v1/controls/"+ir01["id"].(string)+"/policies", obj{"policy_id": pid, "linked": true}), 200).Body
+	if len(d["policies"].([]any)) != 1 {
+		t.Fatalf("link from control failed: %v", d["policies"])
+	}
+	got := admin.Get("/api/v1/policies/" + pid).Body["controls"].([]any)
+	if fmt.Sprint(got) != "[IAM-01 IAM-06 IAM-11 IR-01]" {
+		t.Fatalf("policy controls: %v", got)
+	}
+	// Unlink, and replace the whole set from the policy page.
+	admin.Must(admin.Post("/api/v1/controls/"+ir01["id"].(string)+"/policies", obj{"policy_id": pid, "linked": false}), 200)
+	admin.Must(admin.Patch("/api/v1/policies/"+pid, obj{"control_codes": []string{"iam-06", "GOV-01"}}), 200)
+	if got := admin.Get("/api/v1/policies/" + pid).Body["controls"].([]any); fmt.Sprint(got) != "[GOV-01 IAM-06]" {
+		t.Fatalf("replace controls: %v", got)
+	}
+	if r := admin.Patch("/api/v1/policies/"+pid, obj{"control_codes": []string{"NOPE-99"}}); r.Status != 422 {
+		t.Fatalf("unknown control should be 422, got %d", r.Status)
 	}
 }

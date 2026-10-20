@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { Bot, Download, FileUp, Play, ShieldCheck, ThumbsDown, ThumbsUp, Trash2, UserRound } from 'lucide-react'
+import { Bot, Download, FileUp, Play, ScrollText, ShieldCheck, ThumbsDown, ThumbsUp, Trash2, UserRound, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePermissions } from '@/api/auth'
 import { errorMessage, isApiError } from '@/api/client'
-import { controlQuery, useDeleteEvidence, useReviewEvidence, useRunTest, useSetControlOwner, useUploadEvidence, type Evidence } from '@/api/compliance'
+import { controlQuery, useDeleteEvidence, useLinkPolicy, useReviewEvidence, useRunTest, useSetControlOwner, useUploadEvidence, type ControlDetail, type Evidence } from '@/api/compliance'
+import { policiesQuery } from '@/api/phase2'
 import { membersQuery } from '@/api/org'
 import { FormField } from '@/components/layout/FormField'
 import { ConnectorLogo, ControlStatusBadge, SeverityBadge, TestStatusBadge } from '@/components/status'
@@ -157,6 +158,25 @@ export function ControlDetailPage() {
           </Card>
         </div>
 
+        <div className="space-y-6">
+        <LinkedPolicies c={c} />
+        {c.risks.length ? (
+          <Card className="h-fit" data-testid="control-risks">
+            <CardHeader>
+              <CardTitle className="text-base">Risks mitigated</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1.5">
+              {c.risks.map((r) => (
+                <Link key={r.id} to="/app/risks/$id" params={{ id: r.id }} className="flex items-center justify-between gap-2 text-sm hover:underline">
+                  <span className="truncate">{r.title}</span>
+                  <Badge variant={r.level === 'critical' || r.level === 'high' ? 'destructive' : 'secondary'} className="shrink-0">
+                    {r.score} · {r.status.replace('_', ' ')}
+                  </Badge>
+                </Link>
+              ))}
+            </CardContent>
+          </Card>
+        ) : null}
         <Card className="h-fit">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -186,6 +206,7 @@ export function ControlDetailPage() {
             ))}
           </CardContent>
         </Card>
+        </div>
       </div>
       <UploadDialog controlId={c.id} ttl={c.evidence_ttl_days} open={uploadOpen} onOpenChange={setUploadOpen} />
     </div>
@@ -325,5 +346,58 @@ function UploadDialog({ controlId, ttl, open, onOpenChange }: { controlId: strin
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function LinkedPolicies({ c }: { c: ControlDetail }) {
+  const { can } = usePermissions()
+  const writable = can('policies:write')
+  const all = useQuery({ ...policiesQuery(), enabled: writable })
+  const link = useLinkPolicy(c.id)
+  const linked = new Set(c.policies.map((p) => p.id))
+  const candidates = (all.data?.items ?? []).filter((p) => !linked.has(p.id))
+  return (
+    <Card className="h-fit" data-testid="control-policies">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ScrollText className="h-4 w-4" /> Policies
+        </CardTitle>
+        <CardDescription>Policies that govern this control.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {c.policies.length === 0 ? <p className="text-sm text-muted-foreground">No policy linked yet.</p> : null}
+        <ul className="space-y-1.5">
+          {c.policies.map((p) => (
+            <li key={p.id} className="flex items-center justify-between gap-2 text-sm" data-testid={`control-policy-${p.slug}`}>
+              <Link to="/app/policies/$id" params={{ id: p.id }} className="hover:underline">
+                {p.title}
+              </Link>
+              <span className="flex items-center gap-2">
+                {p.published_version ? <Badge variant="success">v{p.published_version} · {p.acceptance_rate}%</Badge> : <Badge variant="outline">Draft</Badge>}
+                {writable ? (
+                  <button className="text-muted-foreground hover:text-destructive" title="Unlink" aria-label={`Unlink ${p.title}`} onClick={() => link.mutate({ policy_id: p.id, linked: false }, { onSuccess: () => toast.success('Policy unlinked') })}>
+                    <X className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </span>
+            </li>
+          ))}
+        </ul>
+        {writable && candidates.length ? (
+          <Select
+            value=""
+            data-testid="control-link-policy"
+            onChange={(e) => e.target.value && link.mutate({ policy_id: e.target.value, linked: true }, { onSuccess: () => toast.success('Policy linked'), onError: (err) => toast.error(errorMessage(err)) })}
+          >
+            <option value="">Link a policy…</option>
+            {candidates.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.title}
+              </option>
+            ))}
+          </Select>
+        ) : null}
+      </CardContent>
+    </Card>
   )
 }

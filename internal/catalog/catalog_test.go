@@ -17,6 +17,12 @@ func TestCatalogLoads(t *testing.T) {
 	if len(c.Controls) < 80 {
 		t.Errorf("expected >= 80 controls, got %d", len(c.Controls))
 	}
+	if len(c.VendorQuestionnaires) != 1 || len(c.VendorQuestionnaires[0].Questions) != 20 {
+		t.Errorf("vendor questionnaire template missing")
+	}
+	if len(c.Policies) < 20 {
+		t.Errorf("expected >= 20 policy templates, got %d", len(c.Policies))
+	}
 	if len(c.Training) == 0 || len(c.Training[0].Questions) < 5 {
 		t.Errorf("training course missing")
 	}

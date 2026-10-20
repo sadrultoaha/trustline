@@ -182,6 +182,16 @@ export interface ControlDetail extends ControlRow {
   tests: TestRow[]
   evidence: Evidence[]
   open_tasks: TaskRow[]
+  policies: LinkedPolicy[]
+  risks: { id: string; title: string; score: number; status: string; level: string }[]
+}
+export interface LinkedPolicy {
+  id: string
+  slug: string
+  title: string
+  published_version?: number
+  open_status: string
+  acceptance_rate: number
 }
 export interface CredentialField {
   key: string
@@ -302,7 +312,7 @@ const qs = (params: Record<string, string | undefined>) => {
 }
 
 export const dashboardQuery = () => queryOptions({ queryKey: ['dashboard'], queryFn: () => api.get<Dashboard>('/dashboard'), refetchInterval: 10_000 })
-export const frameworksQuery = () => queryOptions({ queryKey: ['frameworks'], queryFn: () => api.get<Items<FrameworkSummary>>('/frameworks') })
+export const frameworksQuery = () => queryOptions({ queryKey: ['frameworks'], queryFn: () => api.get<Items<FrameworkSummary>>('/frameworks'), refetchInterval: 10_000 })
 export const frameworkQuery = (id: string) => queryOptions({ queryKey: ['frameworks', id], queryFn: () => api.get<FrameworkDetail>(`/frameworks/${id}`) })
 export const controlsQuery = (f: { framework?: string; status?: string; q?: string }) =>
   queryOptions({ queryKey: ['controls', f], queryFn: () => api.get<Items<ControlRow>>(`/controls${qs(f)}`), placeholderData: keepPreviousData, refetchInterval: 10_000 })
@@ -438,4 +448,12 @@ export function useRegenerateTask() {
 export function useReadNotifications() {
   const inv = useInvalidate()
   return useMutation({ mutationFn: (ids: string[]) => api.post('/notifications/read', { ids }), onSuccess: () => inv('notifications') })
+}
+
+export function useLinkPolicy(controlId: string) {
+  const inv = useInvalidate()
+  return useMutation({
+    mutationFn: (input: { policy_id: string; linked: boolean }) => api.post<ControlDetail>(`/controls/${controlId}/policies`, input),
+    onSuccess: () => inv('control', 'policy', 'policies', 'activity'),
+  })
 }

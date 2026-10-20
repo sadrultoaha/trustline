@@ -42,6 +42,14 @@ Mailpit (all outgoing email): http://localhost:8025 · MinIO console: http://loc
 3. **Integrations → Okta**, **Deactivate user** for Tom, **Sync now**: the test passes and the Okta item verifies itself.
 4. **Access reviews → New review** (Okta + GitHub): revoke, keep the rest, **Complete review**; the CSV is filed as evidence on IAM-04.
 
+## Try risks and vendors (3 minutes)
+
+1. Turn on **Make the marketing bucket public** (AWS) again. Within a tick **Risks → Suggested** shows "Storage not publicly accessible: No S3 buckets are publicly accessible" (score 20). **Accept** it: it joins the register linked to DAT-01, and DAT-01 lists it under **Risks mitigated**.
+2. **Risks → Complete with AI** drafts more suggestions from your failing tests, systems and vendors.
+3. **Vendors → Add vendor**, then **Upload document** with `testdata/vendors/northwind-soc2-type2.pdf` as a SOC 2 Type II report. The AI review lists the opinion, exceptions (CC6.2, CC7.1) and your CUECs, each cited by page and section; **Apply** the recommended tier.
+4. **Send questionnaire** to any address and open the link from Mailpit (http://localhost:8025) to answer as the vendor.
+5. **Vendors → Discovered** lists apps found in Google Workspace OAuth grants and Okta; add or dismiss them.
+
 Set `AI_MODE=anthropic` and `ANTHROPIC_API_KEY` in `.env.docker` to use Claude instead of the deterministic fake.
 
 ## Local development (hot reload)

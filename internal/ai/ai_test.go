@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 )
@@ -106,5 +107,51 @@ func TestPolicyPromptsRender(t *testing.T) {
 	d := fakePolicyDraft(PolicyDraftInput{OrgName: "Acme", Title: "Access Control Policy", Systems: []string{"Okta", "AWS"}, TemplateMarkdown: "# Access\n\n## Policy\n\ntext\n\n## Review\n\nyearly"})
 	if !strings.Contains(d.Markdown, "## Systems in scope") || strings.Index(d.Markdown, "Systems in scope") > strings.Index(d.Markdown, "## Review") {
 		t.Fatalf("draft not tailored: %s", d.Markdown)
+	}
+}
+
+func TestFakeVendorAssessmentCitesPages(t *testing.T) {
+	data, err := os.ReadFile("../../testdata/vendors/northwind-soc2-type2.pdf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := fakeVendorAssessment(VendorAssessmentInput{VendorName: "Northwind", DocumentKind: "soc2_type2", DataAccess: "confidential", HandlesPII: true},
+		[]Attachment{{MediaType: "application/pdf", Data: data}})
+	if a.Opinion != "unqualified" || a.OpinionCitation == nil || a.OpinionCitation.Page != 3 || !strings.HasPrefix(a.OpinionCitation.Section, "Section 1") {
+		t.Fatalf("opinion: %s %+v", a.Opinion, a.OpinionCitation)
+	}
+	if a.PeriodStart != "January 1, 2026" || a.PeriodEnd != "June 30, 2026" || !strings.Contains(a.Auditor, "Halvorsen") {
+		t.Fatalf("period/auditor: %q %q %q", a.PeriodStart, a.PeriodEnd, a.Auditor)
+	}
+	if len(a.ControlsTested) != 18 {
+		t.Fatalf("expected 18 controls, got %d", len(a.ControlsTested))
+	}
+	if len(a.Exceptions) != 2 || a.Exceptions[0].Control != "CC6.2" || a.Exceptions[0].Citation.Page != 8 || a.Exceptions[0].ManagementResponse == "" {
+		t.Fatalf("exceptions: %+v", a.Exceptions)
+	}
+	if !strings.Contains(a.Exceptions[0].Description, "6 business days") {
+		t.Fatalf("wrapped exception text not joined: %q", a.Exceptions[0].Description)
+	}
+	if len(a.CUECs) != 3 || a.CUECs[0].Citation.Page != 5 || len(a.Subservice) != 2 {
+		t.Fatalf("cuecs/subservice: %+v %+v", a.CUECs, a.Subservice)
+	}
+	if a.RecommendedTier != "critical" {
+		t.Fatalf("tier: %s", a.RecommendedTier)
+	}
+}
+
+func TestFakeRiskAssessment(t *testing.T) {
+	r := fakeRiskAssessment(RiskAssessmentInput{OrgName: "Acme", Headcount: 8, Systems: []string{"AWS"}, Vendors: []string{"Slack"},
+		FailingTests: []FailingTestInfo{{Name: "Public buckets", Control: "DAT-01", Severity: "critical"}, {Name: "MFA", Control: "IAM-01", Severity: "high"}},
+		ControlCodes: []string{"DAT-01", "IAM-01", "VEN-02", "VEN-03", "DAT-03"}, ExistingRisks: []string{"Ransomware disrupts operations"}})
+	titles := []string{}
+	for _, x := range r.Risks {
+		titles = append(titles, x.Title)
+	}
+	if len(r.Risks) != 3 || strings.Contains(strings.Join(titles, "|"), "Ransomware") {
+		t.Fatalf("unexpected risks: %v", titles)
+	}
+	if r.Risks[0].Controls[0] != "DAT-01" || r.Risks[0].Likelihood != 4 {
+		t.Fatalf("critical failing test should raise likelihood and link the control: %+v", r.Risks[0])
 	}
 }

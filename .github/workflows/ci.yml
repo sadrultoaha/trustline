@@ -1,0 +1,58 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  go:
+    name: Go vet + tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: test, POSTGRES_PASSWORD: test, POSTGRES_DB: trustline_test }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U test" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://test:test@localhost:5432/trustline_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod, cache: true }
+      - run: go vet ./...
+      - run: go test ./... -count=1
+
+  web:
+    name: Web typecheck + build
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: web } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: web/package-lock.json }
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc -b
+      - run: npm run build
+
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    needs: [go, web]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: docker compose up -d --build
+      - run: until curl -sf http://localhost:8080/readyz; do sleep 2; done
+        timeout-minutes: 5
+      - run: docker compose exec -T app /app/trustline seed
+      - run: cd e2e && npm ci && npx playwright install --with-deps chromium
+      - run: cd e2e && npm test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: playwright-report, path: e2e/playwright-report }
+      - run: docker compose logs app worker
+        if: failure()

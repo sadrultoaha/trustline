@@ -2,7 +2,7 @@
 # served by Netlify (netlify.toml), which proxies /api, /auth and /agent here.
 #
 # One web service runs the API and the worker in one process (`trustline all`)
-# and seeds the demo data on boot (idempotent). Files are stored in Postgres,
+# and seeds the demo data on boot (`--seed`, idempotent). Files are stored in Postgres,
 # so no disk or object storage is needed.
 #
 # Free plans: the service sleeps after 15 minutes idle (the scheduler pauses
@@ -16,7 +16,8 @@ services:
     branch: phase-3
     dockerfilePath: ./deploy/Dockerfile
     dockerContext: .
-    dockerCommand: sh -c "/app/trustline seed && exec /app/trustline all"
+    # Render does not run dockerCommand through a shell, so keep it a plain argv.
+    dockerCommand: /app/trustline all --seed
     healthCheckPath: /healthz
     autoDeploy: true
     envVars:

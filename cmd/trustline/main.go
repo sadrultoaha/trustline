@@ -49,6 +49,12 @@ func main() {
 	case "worker":
 		runErr = worker(ctx, cfg, log)
 	case "all":
+		// `all --seed` loads the idempotent demo data first (hosted demo).
+		if len(os.Args) > 2 && os.Args[2] == "--seed" {
+			if runErr = runSeed(ctx, cfg, log); runErr != nil {
+				break
+			}
+		}
 		runErr = all(ctx, cfg, log)
 	case "migrate":
 		runErr = migrate(ctx, cfg, log)
@@ -67,7 +73,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: trustline <serve|worker|all|migrate|seed|version>")
+	fmt.Fprintln(os.Stderr, "usage: trustline <serve|worker|all [--seed]|migrate|seed|version>")
 }
 
 func connectDB(ctx context.Context, cfg *config.Config, log *slog.Logger) (pool, error) {

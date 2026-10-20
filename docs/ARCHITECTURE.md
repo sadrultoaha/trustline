@@ -472,8 +472,8 @@ Netlify builds `web/` and serves the static app (`netlify.toml`). At build time
 frontend without a backend is never published. Because the browser only talks to the Netlify
 domain, session cookies stay first-party and no CORS is needed.
 
-The backend runs on Render from `render.yaml`. A single web service runs `trustline seed` and then
-`trustline all`, which runs the API and the worker in one process, with managed Postgres and Key
+The backend runs on Render from `render.yaml`. A single web service runs `trustline all --seed`: it seeds the
+demo data, then runs the API and the worker in one process, with managed Postgres and Key
 Value (Redis). It runs with `TRUSTLINE_ENV=prod`, `GOOGLE_OAUTH_MODE=off`, `MAIL_MODE=memory`,
 `BLOB_MODE=postgres` and `AI_MODE=fake`, so it calls no external services. `BASE_URL` must be the
 Netlify URL, because questionnaire and invite links are built from it.

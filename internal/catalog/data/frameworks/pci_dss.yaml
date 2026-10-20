@@ -1,0 +1,295 @@
+id: pci_dss
+name: PCI DSS 4.0
+version: 4.0.1
+publisher: PCI Security Standards Council
+description: The Payment Card Industry Data Security Standard defines technical and operational requirements for entities that store, process or transmit cardholder data or sensitive authentication data.
+  This catalog includes a representative, testable subset of sub-requirements across all twelve principal requirements, paraphrased.
+sections:
+- 'Requirement 1: Install and Maintain Network Security Controls'
+- 'Requirement 2: Apply Secure Configurations to All System Components'
+- 'Requirement 3: Protect Stored Account Data'
+- 'Requirement 4: Protect Cardholder Data with Strong Cryptography During Transmission'
+- 'Requirement 5: Protect All Systems and Networks from Malicious Software'
+- 'Requirement 6: Develop and Maintain Secure Systems and Software'
+- 'Requirement 7: Restrict Access by Business Need to Know'
+- 'Requirement 8: Identify Users and Authenticate Access'
+- 'Requirement 9: Restrict Physical Access to Cardholder Data'
+- 'Requirement 10: Log and Monitor All Access to System Components and Cardholder Data'
+- 'Requirement 11: Test Security of Systems and Networks Regularly'
+- 'Requirement 12: Support Information Security with Organizational Policies and Programs'
+requirements:
+- code: 1.2.1
+  section: 'Requirement 1: Install and Maintain Network Security Controls'
+  title: Network security control configuration standards
+  description: Define, implement and maintain configuration standards for firewalls and other network security controls, and manage changes to them.
+  controls: [NET-01, CHG-05]
+- code: 1.3.1
+  section: 'Requirement 1: Install and Maintain Network Security Controls'
+  title: Inbound traffic to the CDE restricted
+  description: Allow only necessary inbound traffic into the cardholder data environment and deny everything else.
+  controls: [NET-01, NET-03, PAY-01]
+- code: 1.4.1
+  section: 'Requirement 1: Install and Maintain Network Security Controls'
+  title: Controls between trusted and untrusted networks
+  description: Place network security controls between trusted internal networks and untrusted networks such as the internet.
+  controls: [NET-01, NET-03]
+- code: 1.4.4
+  section: 'Requirement 1: Install and Maintain Network Security Controls'
+  title: Stored cardholder data not reachable from untrusted networks
+  description: System components that store cardholder data must not be directly accessible from untrusted networks.
+  controls: [NET-02, DAT-01]
+- code: 2.2.1
+  section: 'Requirement 2: Apply Secure Configurations to All System Components'
+  title: System hardening standards
+  description: Develop and maintain configuration standards for all system components that address known vulnerabilities and follow industry-accepted hardening guidance.
+  controls: [VUL-04, CHG-05, NET-04]
+- code: 2.2.2
+  section: 'Requirement 2: Apply Secure Configurations to All System Components'
+  title: Vendor default accounts managed
+  description: Change or disable vendor-supplied default accounts and passwords before systems are deployed.
+  controls: [IAM-08, IAM-06]
+- code: 2.2.7
+  section: 'Requirement 2: Apply Secure Configurations to All System Components'
+  title: Non-console administrative access encrypted
+  description: Encrypt all non-console administrative access using strong cryptography.
+  controls: [CRY-02]
+- code: 3.2.1
+  section: 'Requirement 3: Protect Stored Account Data'
+  title: Account data retention minimized
+  description: Keep stored account data to the minimum required, with defined retention periods and secure deletion when no longer needed.
+  controls: [DAT-02, AST-02]
+- code: 3.3.1
+  section: 'Requirement 3: Protect Stored Account Data'
+  title: Sensitive authentication data not retained after authorization
+  description: Do not store sensitive authentication data such as full track data, card verification codes or PINs after authorization completes.
+  controls: [DAT-02, AST-02]
+- code: 3.4.1
+  section: 'Requirement 3: Protect Stored Account Data'
+  title: PAN masked when displayed
+  description: Mask the primary account number when displayed so only personnel with a business need can see more than a limited number of digits.
+  controls: [AST-02, IAM-12]
+- code: 3.5.1
+  section: 'Requirement 3: Protect Stored Account Data'
+  title: PAN rendered unreadable wherever stored
+  description: Make stored PAN unreadable using strong cryptography, truncation, tokenization or keyed hashes.
+  controls: [CRY-01]
+- code: 3.6.1
+  section: 'Requirement 3: Protect Stored Account Data'
+  title: Cryptographic key protection procedures
+  description: Define and implement procedures to protect keys used to secure stored account data against disclosure and misuse.
+  controls: [CRY-03]
+- code: 3.7.4
+  section: 'Requirement 3: Protect Stored Account Data'
+  title: Cryptographic key changes at end of cryptoperiod
+  description: Change cryptographic keys when they reach the end of their defined cryptoperiod.
+  controls: [CRY-03, IAM-09]
+- code: 4.2.1
+  section: 'Requirement 4: Protect Cardholder Data with Strong Cryptography During Transmission'
+  title: Strong cryptography for PAN over open networks
+  description: Protect PAN with strong cryptography and trusted certificates whenever it is transmitted over open, public networks.
+  controls: [CRY-02]
+- code: 5.2.1
+  section: 'Requirement 5: Protect All Systems and Networks from Malicious Software'
+  title: Anti-malware deployed
+  description: Deploy an anti-malware solution on all system components except those evaluated as not at risk from malware.
+  controls: [AST-05]
+- code: 5.3.1
+  section: 'Requirement 5: Protect All Systems and Networks from Malicious Software'
+  title: Anti-malware kept current
+  description: Keep the anti-malware solution and its definitions current through automatic updates.
+  controls: [AST-05]
+- code: 5.4.1
+  section: 'Requirement 5: Protect All Systems and Networks from Malicious Software'
+  title: Protection against phishing
+  description: Use processes and automated mechanisms to detect and protect personnel against phishing attacks.
+  controls: [HR-02, LOG-05]
+- code: 6.2.1
+  section: 'Requirement 6: Develop and Maintain Secure Systems and Software'
+  title: Secure development of bespoke software
+  description: Develop bespoke and custom software securely, based on industry standards and incorporating security throughout the lifecycle.
+  controls: [DEV-01, VUL-06]
+- code: 6.2.3
+  section: 'Requirement 6: Develop and Maintain Secure Systems and Software'
+  title: Code reviewed before release
+  description: Review bespoke and custom code before release to production to identify and correct potential vulnerabilities.
+  controls: [CHG-01, CHG-03, VUL-06]
+- code: 6.3.1
+  section: 'Requirement 6: Develop and Maintain Secure Systems and Software'
+  title: Security vulnerabilities identified and ranked
+  description: Identify new security vulnerabilities from reputable sources and assign each a risk ranking.
+  controls: [VUL-01, VUL-02]
+- code: 6.3.3
+  section: 'Requirement 6: Develop and Maintain Secure Systems and Software'
+  title: Critical patches installed promptly
+  description: Install applicable security patches, with critical and high-risk patches applied within one month of release.
+  controls: [VUL-04, VUL-02]
+- code: 6.4.1
+  section: 'Requirement 6: Develop and Maintain Secure Systems and Software'
+  title: Public-facing web applications protected
+  description: Protect public-facing web applications against attacks through regular vulnerability assessments or an automated attack-blocking solution.
+  controls: [VUL-03, NET-01]
+- code: 6.5.1
+  section: 'Requirement 6: Develop and Maintain Secure Systems and Software'
+  title: Changes to production follow change control
+  description: Changes to system components in production follow documented procedures covering impact, approval, testing and rollback.
+  controls: [CHG-05, CHG-01]
+- code: 6.5.3
+  section: 'Requirement 6: Develop and Maintain Secure Systems and Software'
+  title: Pre-production separated from production
+  description: Separate pre-production environments from production and enforce the separation with access controls.
+  controls: [CHG-04]
+- code: 7.2.1
+  section: 'Requirement 7: Restrict Access by Business Need to Know'
+  title: Access control model defined
+  description: Define an access control model that grants access based on job function and least privilege.
+  controls: [IAM-12, IAM-05]
+- code: 7.2.2
+  section: 'Requirement 7: Restrict Access by Business Need to Know'
+  title: Access assigned by job role and least privilege
+  description: Assign access to users, including privileged users, based on job classification and the least privileges required.
+  controls: [IAM-03, IAM-05]
+- code: 7.2.4
+  section: 'Requirement 7: Restrict Access by Business Need to Know'
+  title: User accounts reviewed periodically
+  description: Review all user accounts and their access privileges at least every six months and correct inappropriate access.
+  controls: [IAM-04]
+- code: 8.2.1
+  section: 'Requirement 8: Identify Users and Authenticate Access'
+  title: Unique IDs for all users
+  description: Assign every user a unique ID before allowing access to system components or cardholder data.
+  controls: [IAM-02]
+- code: 8.2.6
+  section: 'Requirement 8: Identify Users and Authenticate Access'
+  title: Inactive user accounts removed
+  description: Remove or disable user accounts that have been inactive for 90 days.
+  controls: [IAM-07]
+- code: 8.2.8
+  section: 'Requirement 8: Identify Users and Authenticate Access'
+  title: Idle sessions re-authenticated
+  description: Require users to re-authenticate after a session has been idle for more than 15 minutes.
+  controls: [IAM-11, AST-04]
+- code: 8.3.1
+  section: 'Requirement 8: Identify Users and Authenticate Access'
+  title: Strong authentication for users
+  description: Authenticate all user access with at least one factor such as a password, token or biometric.
+  controls: [IAM-06, IAM-01]
+- code: 8.3.6
+  section: 'Requirement 8: Identify Users and Authenticate Access'
+  title: Password complexity requirements
+  description: Passwords used as an authentication factor must meet minimum length and character composition requirements.
+  controls: [IAM-06]
+- code: 8.4.2
+  section: 'Requirement 8: Identify Users and Authenticate Access'
+  title: MFA for all access into the CDE
+  description: Require multi-factor authentication for all non-console access into the cardholder data environment.
+  controls: [IAM-01]
+- code: 8.6.3
+  section: 'Requirement 8: Identify Users and Authenticate Access'
+  title: System and application account credentials protected
+  description: Protect passwords for application and system accounts against misuse and change them periodically.
+  controls: [IAM-09, VUL-05]
+- code: 9.2.1
+  section: 'Requirement 9: Restrict Physical Access to Cardholder Data'
+  title: Facility entry controls
+  description: Use appropriate facility entry controls to restrict physical access to systems in the CDE.
+  controls: [PHY-01]
+- code: 9.4.6
+  section: 'Requirement 9: Restrict Physical Access to Cardholder Data'
+  title: Hard-copy media destroyed
+  description: Destroy hard-copy materials containing cardholder data when no longer needed so the data cannot be reconstructed.
+  controls: [AST-06]
+- code: 9.4.7
+  section: 'Requirement 9: Restrict Physical Access to Cardholder Data'
+  title: Electronic media destroyed or rendered unrecoverable
+  description: Destroy electronic media containing cardholder data, or render the data unrecoverable, when no longer needed.
+  controls: [AST-06, DAT-02]
+- code: 10.2.1
+  section: 'Requirement 10: Log and Monitor All Access to System Components and Cardholder Data'
+  title: Audit logs enabled
+  description: Enable audit logs on all system components and for cardholder data access.
+  controls: [LOG-01, LOG-04]
+- code: 10.3.2
+  section: 'Requirement 10: Log and Monitor All Access to System Components and Cardholder Data'
+  title: Audit logs protected from modification
+  description: Protect audit log files against unauthorized modification.
+  controls: [LOG-02]
+- code: 10.4.1
+  section: 'Requirement 10: Log and Monitor All Access to System Components and Cardholder Data'
+  title: Security events reviewed daily
+  description: Review security events and logs of critical system components at least daily.
+  controls: [LOG-06, LOG-05]
+- code: 10.5.1
+  section: 'Requirement 10: Log and Monitor All Access to System Components and Cardholder Data'
+  title: Audit log retention
+  description: Retain audit log history for at least twelve months, with the most recent three months immediately available.
+  controls: [LOG-03]
+- code: 10.7.2
+  section: 'Requirement 10: Log and Monitor All Access to System Components and Cardholder Data'
+  title: Failures of critical security controls detected
+  description: Detect, alert on and promptly address failures of critical security control systems.
+  controls: [LOG-05, LOG-06]
+- code: 11.3.1
+  section: 'Requirement 11: Test Security of Systems and Networks Regularly'
+  title: Quarterly internal vulnerability scans
+  description: Perform internal vulnerability scans at least quarterly and resolve high-risk and critical vulnerabilities.
+  controls: [VUL-01, VUL-02]
+- code: 11.3.2
+  section: 'Requirement 11: Test Security of Systems and Networks Regularly'
+  title: Quarterly external ASV scans
+  description: Have external vulnerability scans performed at least quarterly by a PCI SSC Approved Scanning Vendor and rescan until passing.
+  controls: [PAY-02]
+- code: 11.4.1
+  section: 'Requirement 11: Test Security of Systems and Networks Regularly'
+  title: Penetration testing methodology
+  description: Define and implement a penetration testing methodology covering the CDE perimeter and critical systems, tested internally and externally at least annually.
+  controls: [VUL-03]
+- code: 11.5.1
+  section: 'Requirement 11: Test Security of Systems and Networks Regularly'
+  title: Intrusion detection and prevention
+  description: Use intrusion detection or prevention techniques to detect and alert on intrusions into the network.
+  controls: [LOG-05]
+- code: 12.1.1
+  section: 'Requirement 12: Support Information Security with Organizational Policies and Programs'
+  title: Information security policy
+  description: Establish, publish, maintain and disseminate an overall information security policy.
+  controls: [GOV-01, GOV-05]
+- code: 12.1.2
+  section: 'Requirement 12: Support Information Security with Organizational Policies and Programs'
+  title: Security policy reviewed annually
+  description: Review the information security policy at least once a year and update it as needed.
+  controls: [GOV-04]
+- code: 12.3.1
+  section: 'Requirement 12: Support Information Security with Organizational Policies and Programs'
+  title: Targeted risk analysis
+  description: Perform a targeted risk analysis for each requirement that allows flexibility in how frequently it is performed.
+  controls: [RSK-01]
+- code: 12.5.2
+  section: 'Requirement 12: Support Information Security with Organizational Policies and Programs'
+  title: PCI DSS scope documented and confirmed
+  description: Document and confirm PCI DSS scope, including all data flows and locations of account data, at least annually and on significant change.
+  controls: [PAY-01, AST-01]
+- code: 12.6.1
+  section: 'Requirement 12: Support Information Security with Organizational Policies and Programs'
+  title: Security awareness program
+  description: Implement a formal security awareness program so all personnel understand the security policy and their role in protecting cardholder data.
+  controls: [HR-02]
+- code: 12.7.1
+  section: 'Requirement 12: Support Information Security with Organizational Policies and Programs'
+  title: Personnel screened
+  description: Screen potential personnel who will have access to the CDE prior to hire to minimize the risk of internal attacks.
+  controls: [HR-01]
+- code: 12.8.2
+  section: 'Requirement 12: Support Information Security with Organizational Policies and Programs'
+  title: Written agreements with third-party service providers
+  description: Maintain written agreements with service providers that acknowledge their responsibility for the security of account data they handle.
+  controls: [VEN-03]
+- code: 12.8.4
+  section: 'Requirement 12: Support Information Security with Organizational Policies and Programs'
+  title: Service provider compliance monitored
+  description: Monitor the PCI DSS compliance status of third-party service providers at least once a year.
+  controls: [VEN-02, VEN-01]
+- code: 12.10.1
+  section: 'Requirement 12: Support Information Security with Organizational Policies and Programs'
+  title: Incident response plan
+  description: Maintain an incident response plan ready to be activated in the event of a suspected or confirmed security incident.
+  controls: [IR-01, IR-02, IR-03]

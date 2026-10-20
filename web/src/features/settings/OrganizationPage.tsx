@@ -95,6 +95,24 @@ function OrganizationForm({ org }: { org: Org }) {
             </div>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Notifications</CardTitle>
+            <CardDescription>Where control status changes are announced.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <FormField label="Slack incoming webhook URL" htmlFor="slack" error={fields['settings.slack_webhook_url']} hint="Failing and recovered controls are posted to this channel.">
+              <Input id="slack" value={settings.slack_webhook_url ?? ''} onChange={(e) => setSettings({ ...settings, slack_webhook_url: e.target.value })} disabled={readOnly} placeholder="https://hooks.slack.com/services/…" data-testid="org-slack" />
+            </FormField>
+            <div className="space-y-1.5">
+              <span className="text-sm font-medium">Email alerts</span>
+              <div className="flex items-center gap-3 pt-1">
+                <Switch checked={settings.email_notifications} onCheckedChange={(v) => setSettings({ ...settings, email_notifications: v })} disabled={readOnly} data-testid="org-email-notifications" />
+                <span className="text-sm text-muted-foreground">Email admins, editors and control owners when a control fails or recovers.</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         {!readOnly ? (
           <div className="flex justify-end">
             <Button type="submit" loading={update.isPending} data-testid="org-save">

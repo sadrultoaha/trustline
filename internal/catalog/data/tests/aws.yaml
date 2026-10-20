@@ -1,0 +1,784 @@
+# Automated tests for Amazon Web Services. See ../README.md for the format.
+
+# ---------------------------------------------------------------- IAM users
+
+- id: aws.iam.console_users_mfa
+  name: IAM users with console access have MFA
+  description: A console password alone can be phished or guessed; MFA on every interactive IAM user is a baseline expectation of every framework.
+  connector: aws
+  resource: iam_user
+  control: IAM-01
+  severity: high
+  quantifier: all
+  where: {field: console_access, op: eq, value: true}
+  assert: {field: mfa_enabled, op: eq, value: true}
+  remediation:
+    summary: Enable a virtual or hardware MFA device for every IAM user that can sign in to the console.
+    steps:
+      - In the IAM console open Users, select the user, then Security credentials > Assign MFA device.
+      - Or run `aws iam create-virtual-mfa-device` and `aws iam enable-mfa-device` for the user.
+      - Attach an IAM policy that denies all actions unless `aws:MultiFactorAuthPresent` is true.
+      - Prefer moving human access to IAM Identity Center with IdP-enforced MFA.
+    iac_hint: terraform:aws_iam_virtual_mfa_device
+
+- id: aws.iam.admin_users_mfa
+  name: IAM users with administrator access have MFA
+  description: Administrator credentials grant full control of the account; compromise without a second factor is catastrophic.
+  connector: aws
+  resource: iam_user
+  control: IAM-01
+  severity: critical
+  quantifier: all
+  where:
+    and:
+      - {field: admin, op: eq, value: true}
+      - {field: console_access, op: eq, value: true}
+  assert: {field: mfa_enabled, op: eq, value: true}
+  remediation:
+    summary: Enforce MFA on every administrator IAM user immediately, or remove their console password.
+    steps:
+      - In IAM > Users, select each administrator and assign an MFA device under Security credentials.
+      - Until MFA is enrolled, remove the console password with `aws iam delete-login-profile --user-name <user>`.
+      - Add a deny-unless-MFA guardrail policy to the administrators group.
+    iac_hint: terraform:aws_iam_virtual_mfa_device
+
+- id: aws.iam.inactive_console_users
+  name: IAM users with console access have signed in within 90 days
+  description: Dormant credentials are rarely monitored and are a common entry point; unused console access should be removed.
+  connector: aws
+  resource: iam_user
+  control: IAM-07
+  severity: medium
+  quantifier: all
+  where: {field: console_access, op: eq, value: true}
+  assert: {field: last_login_days, op: lte, value: 90}
+  remediation:
+    summary: Disable console access for IAM users that have not signed in for more than 90 days.
+    steps:
+      - Generate a credential report with `aws iam generate-credential-report` and review `password_last_used`.
+      - Remove the console password of inactive users with `aws iam delete-login-profile --user-name <user>`.
+      - Delete the user entirely if the owner confirms it is no longer needed.
+    iac_hint: terraform:aws_iam_user_login_profile
+
+- id: aws.iam.access_keys_rotated
+  name: IAM access keys are no older than 90 days
+  description: Long-lived access keys accumulate exposure in scripts, laptops and CI logs; regular rotation limits the impact of a leak.
+  connector: aws
+  resource: iam_user
+  control: IAM-09
+  severity: medium
+  quantifier: all
+  where: {field: access_keys, op: len_gt, value: 0}
+  assert: {field: "access_keys[*].age_days", op: lte, value: 90}
+  remediation:
+    summary: Rotate access keys older than 90 days and delete keys that are inactive.
+    steps:
+      - Create a new key with `aws iam create-access-key --user-name <user>` and roll it out to consumers.
+      - Deactivate the old key with `aws iam update-access-key --status Inactive`, then delete it with `aws iam delete-access-key`.
+      - Where possible replace static keys with IAM roles, OIDC federation or IAM Roles Anywhere.
+    iac_hint: terraform:aws_iam_access_key
+
+- id: aws.iam.unused_access_keys
+  name: IAM access keys have been used within 90 days
+  description: Keys that are no longer used provide no value and remain a credential that can be stolen.
+  connector: aws
+  resource: iam_user
+  control: IAM-07
+  severity: medium
+  quantifier: all
+  where: {field: access_keys, op: len_gt, value: 0}
+  assert: {field: "access_keys[*].last_used_days", op: lte, value: 90}
+  remediation:
+    summary: Deactivate and delete access keys unused for more than 90 days.
+    steps:
+      - Check last use with `aws iam get-access-key-last-used --access-key-id <id>`.
+      - Deactivate the key with `aws iam update-access-key --status Inactive` and wait for any breakage.
+      - Delete the key with `aws iam delete-access-key` once confirmed unused.
+    iac_hint: terraform:aws_iam_access_key
+
+- id: aws.iam.no_direct_admin
+  name: No IAM users have AdministratorAccess attached directly
+  description: Administrative rights attached directly to users bypass group-based review and are easily forgotten; privileged access should flow through roles or groups.
+  connector: aws
+  resource: iam_user
+  control: IAM-05
+  severity: high
+  quantifier: none
+  assert: {field: admin, op: eq, value: true}
+  remediation:
+    summary: Detach AdministratorAccess from users and grant elevated access via an assumable role or a reviewed group.
+    steps:
+      - List attached policies with `aws iam list-attached-user-policies --user-name <user>`.
+      - Detach with `aws iam detach-user-policy --user-name <user> --policy-arn arn:aws:iam::aws:policy/AdministratorAccess`.
+      - Grant admin through an IAM Identity Center permission set or a role requiring MFA to assume.
+    iac_hint: terraform:aws_iam_role_policy_attachment
+
+- id: aws.iam.service_accounts_no_console
+  name: Service IAM users have no console password
+  description: Programmatic service identities should never be usable interactively; a console password widens their attack surface.
+  connector: aws
+  resource: iam_user
+  control: IAM-12
+  severity: medium
+  quantifier: all
+  where: {field: is_service_account, op: eq, value: true}
+  assert: {field: console_access, op: eq, value: false}
+  remediation:
+    summary: Remove console passwords from service IAM users.
+    steps:
+      - Run `aws iam delete-login-profile --user-name <service-user>`.
+      - Confirm in IAM > Users > Security credentials that Console access shows Disabled.
+    iac_hint: terraform:aws_iam_user_login_profile
+
+- id: aws.iam.service_accounts_not_admin
+  name: Service IAM users do not hold administrator access
+  description: Service credentials are usually static keys stored in systems; giving them full admin turns any leak into a full account takeover.
+  connector: aws
+  resource: iam_user
+  control: IAM-12
+  severity: high
+  quantifier: all
+  where: {field: is_service_account, op: eq, value: true}
+  assert: {field: admin, op: eq, value: false}
+  remediation:
+    summary: Replace AdministratorAccess on service users with a least-privilege policy scoped to what the workload needs.
+    steps:
+      - Use IAM Access Analyzer policy generation from CloudTrail activity to draft a scoped policy.
+      - Attach the scoped policy and detach AdministratorAccess with `aws iam detach-user-policy`.
+      - Prefer IAM roles for workloads running on AWS instead of service users with keys.
+    iac_hint: terraform:aws_iam_user_policy_attachment
+
+- id: aws.iam.human_users_no_access_keys
+  name: Human IAM users have no access keys
+  description: Interactive users should use short-lived credentials from SSO or role assumption rather than static keys.
+  connector: aws
+  resource: iam_user
+  control: IAM-09
+  severity: low
+  quantifier: all
+  where:
+    and:
+      - {field: console_access, op: eq, value: true}
+      - {field: is_service_account, op: eq, value: false}
+  assert: {field: access_keys, op: len_lt, value: 1}
+  remediation:
+    summary: Remove static access keys from human users and issue temporary credentials via IAM Identity Center.
+    steps:
+      - Set up `aws configure sso` for CLI users so they receive short-lived credentials.
+      - Deactivate and delete the user's keys with `aws iam update-access-key` and `aws iam delete-access-key`.
+    iac_hint: terraform:aws_iam_access_key
+
+# ---------------------------------------------------------------- Account / root / password policy
+
+- id: aws.root.mfa_enabled
+  name: Root account has MFA enabled
+  description: The root user cannot be restricted by IAM policy; MFA is the primary safeguard against full account takeover.
+  connector: aws
+  resource: iam_account
+  control: IAM-08
+  severity: critical
+  quantifier: all
+  assert: {field: root_mfa_enabled, op: eq, value: true}
+  remediation:
+    summary: Enable a hardware or virtual MFA device on the root user.
+    steps:
+      - Sign in as root, open the account menu > Security credentials > Multi-factor authentication > Assign MFA device.
+      - Prefer a hardware security key and store it with the break-glass procedure.
+      - In AWS Organizations, consider centralised root access management to remove member-account root credentials.
+
+- id: aws.root.no_access_keys
+  name: Root account has no access keys
+  description: Root access keys provide unrestricted programmatic control of the account and cannot be scoped down.
+  connector: aws
+  resource: iam_account
+  control: IAM-08
+  severity: critical
+  quantifier: all
+  assert: {field: root_access_keys, op: eq, value: 0}
+  remediation:
+    summary: Delete all root user access keys.
+    steps:
+      - Sign in as root and open Security credentials > Access keys.
+      - Deactivate, then delete every key; replace any dependency with an IAM role.
+      - Confirm `AccountAccessKeysPresent` is 0 in `aws iam get-account-summary`.
+
+- id: aws.password_policy.min_length
+  name: IAM password policy requires at least 14 characters
+  description: Long passwords resist brute force and credential stuffing; CIS recommends a minimum of 14 characters.
+  connector: aws
+  resource: iam_account
+  control: IAM-06
+  severity: medium
+  quantifier: all
+  assert: {field: password_policy.min_length, op: gte, value: 14}
+  remediation:
+    summary: Set the account password policy minimum length to 14 or more.
+    steps:
+      - In IAM > Account settings > Password policy, choose Edit and set Minimum password length to 14.
+      - Or run `aws iam update-account-password-policy --minimum-password-length 14` (include the other existing settings).
+    iac_hint: terraform:aws_iam_account_password_policy
+
+- id: aws.password_policy.complexity
+  name: IAM password policy requires symbols, numbers and uppercase letters
+  description: Character-class requirements increase password entropy for IAM users that still use console passwords.
+  connector: aws
+  resource: iam_account
+  control: IAM-06
+  severity: low
+  quantifier: all
+  assert:
+    and:
+      - {field: password_policy.require_symbols, op: eq, value: true}
+      - {field: password_policy.require_numbers, op: eq, value: true}
+      - {field: password_policy.require_uppercase, op: eq, value: true}
+  remediation:
+    summary: Enable symbol, number and uppercase requirements in the password policy.
+    steps:
+      - In IAM > Account settings > Password policy, tick the character-type requirements.
+      - Or run `aws iam update-account-password-policy --require-symbols --require-numbers --require-uppercase-characters`.
+    iac_hint: terraform:aws_iam_account_password_policy
+
+- id: aws.password_policy.reuse_prevention
+  name: IAM password policy prevents reuse of the last 24 passwords
+  description: Preventing reuse stops users cycling back to previously compromised passwords.
+  connector: aws
+  resource: iam_account
+  control: IAM-06
+  severity: low
+  quantifier: all
+  assert: {field: password_policy.reuse_prevention, op: gte, value: 24}
+  remediation:
+    summary: Set password reuse prevention to 24.
+    steps:
+      - In IAM > Account settings > Password policy, set Prevent password reuse to 24.
+      - Or run `aws iam update-account-password-policy --password-reuse-prevention 24`.
+    iac_hint: terraform:aws_iam_account_password_policy
+
+- id: aws.password_policy.max_age
+  name: IAM passwords expire within 90 days
+  description: A maximum password age bounds how long a leaked password remains valid for IAM users without MFA-backed SSO.
+  connector: aws
+  resource: iam_account
+  control: IAM-06
+  severity: low
+  quantifier: all
+  assert:
+    and:
+      - {field: password_policy.max_age_days, op: gt, value: 0}
+      - {field: password_policy.max_age_days, op: lte, value: 90}
+  remediation:
+    summary: Set a maximum password age of 90 days or less.
+    steps:
+      - In IAM > Account settings > Password policy, enable password expiration and set 90 days.
+      - Or run `aws iam update-account-password-policy --max-password-age 90`.
+    iac_hint: terraform:aws_iam_account_password_policy
+
+# ---------------------------------------------------------------- S3
+
+- id: aws.s3.block_public_access
+  name: S3 buckets block public access
+  description: Bucket-level Block Public Access prevents ACLs or policies from accidentally exposing data to the internet.
+  connector: aws
+  resource: s3_bucket
+  control: DAT-01
+  severity: high
+  quantifier: all
+  assert:
+    and:
+      - {field: public_access_block.block_public_acls, op: eq, value: true}
+      - {field: public_access_block.ignore_public_acls, op: eq, value: true}
+      - {field: public_access_block.block_public_policy, op: eq, value: true}
+      - {field: public_access_block.restrict_public_buckets, op: eq, value: true}
+  remediation:
+    summary: Turn on all four Block Public Access settings for every bucket (and at the account level).
+    steps:
+      - In S3 > bucket > Permissions > Block public access, choose Edit and enable all four settings.
+      - Or run `aws s3api put-public-access-block --bucket <name> --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true`.
+      - Enable the account-wide setting with `aws s3control put-public-access-block --account-id <id> ...`.
+    iac_hint: terraform:aws_s3_bucket_public_access_block
+
+- id: aws.s3.not_public
+  name: No S3 buckets are publicly accessible
+  description: A public bucket exposes its contents to anyone on the internet and is one of the most common causes of data breaches.
+  connector: aws
+  resource: s3_bucket
+  control: DAT-01
+  severity: critical
+  quantifier: none
+  assert: {field: public, op: eq, value: true}
+  remediation:
+    summary: Remove public grants from the bucket policy and ACLs, then enable Block Public Access.
+    steps:
+      - Review the bucket policy under Permissions and remove statements with a wildcard `Principal` that lack restricting conditions.
+      - Remove AllUsers/AuthenticatedUsers grants from the bucket ACL, or set Object Ownership to Bucket owner enforced.
+      - Serve intentionally public content through CloudFront with Origin Access Control instead.
+    iac_hint: terraform:aws_s3_bucket_policy
+
+- id: aws.s3.default_encryption
+  name: S3 buckets have default encryption enabled
+  description: Default encryption ensures every object written to the bucket is encrypted at rest.
+  connector: aws
+  resource: s3_bucket
+  control: CRY-01
+  severity: high
+  quantifier: all
+  assert: {field: encryption.enabled, op: eq, value: true}
+  remediation:
+    summary: Configure default server-side encryption (SSE-S3 or SSE-KMS) on the bucket.
+    steps:
+      - In S3 > bucket > Properties > Default encryption, choose Edit and select SSE-KMS or SSE-S3.
+      - Or run `aws s3api put-bucket-encryption --bucket <name> --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"aws:kms"}}]}'`.
+    iac_hint: terraform:aws_s3_bucket_server_side_encryption_configuration
+
+- id: aws.s3.sensitive_kms_encryption
+  name: S3 buckets holding confidential data are encrypted with KMS
+  description: Sensitive data should use KMS keys so access to decrypt is controlled and audited separately from bucket access.
+  connector: aws
+  resource: s3_bucket
+  control: CRY-03
+  severity: medium
+  quantifier: all
+  where: {field: tags.data_classification, op: in, value: [confidential, restricted]}
+  assert: {field: encryption.algorithm, op: in, value: ["aws:kms", "aws:kms:dsse"]}
+  remediation:
+    summary: Switch default encryption on confidential buckets to SSE-KMS with a customer managed key.
+    steps:
+      - Create or choose a customer managed KMS key with a restrictive key policy.
+      - In S3 > bucket > Properties > Default encryption, select SSE-KMS and the key, and enable Bucket Key.
+      - Re-encrypt existing objects with S3 Batch Operations copy if required.
+    iac_hint: terraform:aws_s3_bucket_server_side_encryption_configuration
+
+- id: aws.s3.versioning
+  name: S3 buckets have versioning enabled
+  description: Versioning lets you recover objects that were overwritten or deleted by mistake or by ransomware.
+  connector: aws
+  resource: s3_bucket
+  control: DAT-05
+  severity: medium
+  quantifier: all
+  assert: {field: versioning, op: eq, value: true}
+  remediation:
+    summary: Enable versioning and add a lifecycle rule to expire old noncurrent versions.
+    steps:
+      - In S3 > bucket > Properties > Bucket Versioning, choose Edit and Enable.
+      - Or run `aws s3api put-bucket-versioning --bucket <name> --versioning-configuration Status=Enabled`.
+      - Add a lifecycle rule for noncurrent version expiration to control cost.
+    iac_hint: terraform:aws_s3_bucket_versioning
+
+- id: aws.s3.access_logging
+  name: S3 buckets have server access logging enabled
+  description: Access logs provide an audit trail of requests against the bucket for investigations.
+  connector: aws
+  resource: s3_bucket
+  control: LOG-04
+  severity: medium
+  quantifier: all
+  assert: {field: logging_enabled, op: eq, value: true}
+  remediation:
+    summary: Enable server access logging to a dedicated log bucket (or CloudTrail S3 data events).
+    steps:
+      - Create a central log bucket with restricted access.
+      - In S3 > bucket > Properties > Server access logging, choose Edit, enable and select the target bucket.
+      - Or run `aws s3api put-bucket-logging --bucket <name> --bucket-logging-status file://logging.json`.
+    iac_hint: terraform:aws_s3_bucket_logging
+
+- id: aws.s3.classification_tagged
+  name: S3 buckets carry a data classification tag
+  description: Classification tags let security controls and reviews be scaled to the sensitivity of the data stored.
+  connector: aws
+  resource: s3_bucket
+  control: AST-02
+  severity: low
+  quantifier: all
+  assert: {field: tags.data_classification, op: exists}
+  remediation:
+    summary: Tag every bucket with data_classification according to the data classification policy.
+    steps:
+      - In S3 > bucket > Properties > Tags, add `data_classification` with public, internal, confidential or restricted.
+      - Or run `aws s3api put-bucket-tagging --bucket <name> --tagging 'TagSet=[{Key=data_classification,Value=internal}]'`.
+      - Enforce the tag with an AWS Organizations tag policy or an SCP.
+    iac_hint: terraform:aws_s3_bucket
+
+# ---------------------------------------------------------------- CloudTrail
+
+- id: aws.cloudtrail.multi_region_logging
+  name: At least one multi-region CloudTrail trail is logging
+  description: A multi-region trail captures management events from every region, including ones an attacker might use to hide activity.
+  connector: aws
+  resource: cloudtrail_trail
+  control: LOG-01
+  severity: high
+  quantifier: any
+  assert:
+    and:
+      - {field: is_multi_region, op: eq, value: true}
+      - {field: is_logging, op: eq, value: true}
+  remediation:
+    summary: Create a multi-region (ideally organization) trail and start logging.
+    steps:
+      - In CloudTrail > Trails > Create trail, enable for all regions (and all accounts in the organization).
+      - Or run `aws cloudtrail create-trail --name org-trail --s3-bucket-name <bucket> --is-multi-region-trail` then `aws cloudtrail start-logging --name org-trail`.
+    iac_hint: terraform:aws_cloudtrail
+
+- id: aws.cloudtrail.logging
+  name: CloudTrail trails are logging
+  description: A trail that has been stopped silently stops recording API activity.
+  connector: aws
+  resource: cloudtrail_trail
+  control: LOG-01
+  severity: high
+  quantifier: all
+  assert: {field: is_logging, op: eq, value: true}
+  remediation:
+    summary: Restart logging on stopped trails and alert on StopLogging events.
+    steps:
+      - Run `aws cloudtrail start-logging --name <trail>`.
+      - Create an EventBridge rule on `StopLogging` and `DeleteTrail` to alert the security team.
+      - Delete trails that are genuinely no longer needed instead of leaving them stopped.
+    iac_hint: terraform:aws_cloudtrail
+
+- id: aws.cloudtrail.log_file_validation
+  name: CloudTrail log file validation is enabled
+  description: Digest files make it possible to prove that log files were not modified or deleted after delivery.
+  connector: aws
+  resource: cloudtrail_trail
+  control: LOG-02
+  severity: medium
+  quantifier: all
+  assert: {field: log_file_validation, op: eq, value: true}
+  remediation:
+    summary: Enable log file integrity validation on every trail.
+    steps:
+      - In CloudTrail > Trails > trail > General details > Edit, enable Log file validation.
+      - Or run `aws cloudtrail update-trail --name <trail> --enable-log-file-validation`.
+    iac_hint: terraform:aws_cloudtrail
+
+- id: aws.cloudtrail.kms_encrypted
+  name: CloudTrail logs are encrypted with KMS
+  description: KMS encryption adds a separate access control on audit logs so bucket readers cannot read them without key permissions.
+  connector: aws
+  resource: cloudtrail_trail
+  control: LOG-02
+  severity: medium
+  quantifier: all
+  assert: {field: kms_encrypted, op: eq, value: true}
+  remediation:
+    summary: Configure SSE-KMS encryption with a customer managed key on each trail.
+    steps:
+      - Create a KMS key whose policy allows cloudtrail.amazonaws.com to encrypt.
+      - Run `aws cloudtrail update-trail --name <trail> --kms-key-id <key-arn>`.
+    iac_hint: terraform:aws_cloudtrail
+
+# ---------------------------------------------------------------- RDS
+
+- id: aws.rds.storage_encrypted
+  name: RDS instances have storage encryption enabled
+  description: Encrypting database storage protects data, snapshots and backups at rest.
+  connector: aws
+  resource: rds_instance
+  control: CRY-01
+  severity: high
+  quantifier: all
+  assert: {field: storage_encrypted, op: eq, value: true}
+  remediation:
+    summary: Migrate unencrypted instances to encrypted storage (encryption cannot be enabled in place).
+    steps:
+      - Take a snapshot with `aws rds create-db-snapshot`.
+      - Copy it with encryption using `aws rds copy-db-snapshot --kms-key-id <key>`.
+      - Restore a new instance from the encrypted snapshot, cut over, then delete the old one.
+    iac_hint: terraform:aws_db_instance
+
+- id: aws.rds.not_public
+  name: RDS instances are not publicly accessible
+  description: A publicly accessible database is reachable from the internet and exposed to brute force and exploits.
+  connector: aws
+  resource: rds_instance
+  control: NET-02
+  severity: critical
+  quantifier: all
+  assert: {field: publicly_accessible, op: eq, value: false}
+  remediation:
+    summary: Disable public accessibility and place the instance in private subnets.
+    steps:
+      - Run `aws rds modify-db-instance --db-instance-identifier <id> --no-publicly-accessible --apply-immediately`.
+      - Ensure the DB subnet group only contains private subnets.
+      - Restrict the instance security group to application security groups.
+    iac_hint: terraform:aws_db_instance
+
+- id: aws.rds.backup_retention
+  name: RDS instances retain automated backups for at least 7 days
+  description: Automated backups with adequate retention allow point-in-time recovery after corruption or deletion.
+  connector: aws
+  resource: rds_instance
+  control: DAT-03
+  severity: high
+  quantifier: all
+  assert: {field: backup_retention_days, op: gte, value: 7}
+  remediation:
+    summary: Set the backup retention period to 7 days or more.
+    steps:
+      - In RDS > Databases > instance > Modify > Backup, set Backup retention period to 7+ days.
+      - Or run `aws rds modify-db-instance --db-instance-identifier <id> --backup-retention-period 7 --apply-immediately`.
+      - Consider AWS Backup plans for longer, cross-region retention.
+    iac_hint: terraform:aws_db_instance
+
+- id: aws.rds.production_backup_retention
+  name: Production RDS instances retain backups for at least 30 days
+  description: Production data typically needs a longer recovery window to catch late-detected corruption or incidents.
+  connector: aws
+  resource: rds_instance
+  control: DAT-03
+  severity: medium
+  quantifier: all
+  where: {field: environment, op: eq, value: production}
+  assert: {field: backup_retention_days, op: gte, value: 30}
+  remediation:
+    summary: Increase backup retention on production databases to at least 30 days.
+    steps:
+      - Run `aws rds modify-db-instance --db-instance-identifier <id> --backup-retention-period 30 --apply-immediately`.
+      - Or add the instance to an AWS Backup plan with 30+ days retention.
+    iac_hint: terraform:aws_db_instance
+
+- id: aws.rds.production_multi_az
+  name: Production RDS instances are Multi-AZ
+  description: Multi-AZ deployments fail over automatically when an Availability Zone or the primary host fails.
+  connector: aws
+  resource: rds_instance
+  control: BCP-03
+  severity: medium
+  quantifier: all
+  where: {field: environment, op: eq, value: production}
+  assert: {field: multi_az, op: eq, value: true}
+  remediation:
+    summary: Convert production instances to Multi-AZ.
+    steps:
+      - In RDS > Databases > instance > Modify, set Multi-AZ deployment to create a standby instance.
+      - Or run `aws rds modify-db-instance --db-instance-identifier <id> --multi-az --apply-immediately`.
+    iac_hint: terraform:aws_db_instance
+
+- id: aws.rds.production_deletion_protection
+  name: Production RDS instances have deletion protection
+  description: Deletion protection prevents a production database being removed by mistake or by a compromised identity.
+  connector: aws
+  resource: rds_instance
+  control: DAT-05
+  severity: medium
+  quantifier: all
+  where: {field: environment, op: eq, value: production}
+  assert: {field: deletion_protection, op: eq, value: true}
+  remediation:
+    summary: Enable deletion protection on production databases.
+    steps:
+      - In RDS > Databases > instance > Modify, tick Enable deletion protection.
+      - Or run `aws rds modify-db-instance --db-instance-identifier <id> --deletion-protection --apply-immediately`.
+    iac_hint: terraform:aws_db_instance
+
+- id: aws.rds.auto_minor_version_upgrade
+  name: RDS instances apply minor version upgrades automatically
+  description: Minor engine versions carry security fixes; automatic upgrades keep databases patched during maintenance windows.
+  connector: aws
+  resource: rds_instance
+  control: VUL-04
+  severity: medium
+  quantifier: all
+  assert: {field: auto_minor_version_upgrade, op: eq, value: true}
+  remediation:
+    summary: Enable auto minor version upgrade and set an appropriate maintenance window.
+    steps:
+      - In RDS > Databases > instance > Modify > Maintenance, enable Auto minor version upgrade.
+      - Or run `aws rds modify-db-instance --db-instance-identifier <id> --auto-minor-version-upgrade`.
+    iac_hint: terraform:aws_db_instance
+
+# ---------------------------------------------------------------- EC2
+
+- id: aws.ec2.imdsv2_required
+  name: EC2 instances require IMDSv2
+  description: IMDSv2 session tokens defend against SSRF attacks that steal instance role credentials from the metadata service.
+  connector: aws
+  resource: ec2_instance
+  control: NET-04
+  severity: high
+  quantifier: all
+  assert: {field: imdsv2_required, op: eq, value: true}
+  remediation:
+    summary: Set HttpTokens to required on every instance and in launch templates.
+    steps:
+      - Run `aws ec2 modify-instance-metadata-options --instance-id <id> --http-tokens required --http-endpoint enabled`.
+      - Update launch templates and AMI defaults so new instances require IMDSv2.
+      - Set the account-level default with `aws ec2 modify-instance-metadata-defaults --http-tokens required`.
+    iac_hint: terraform:aws_instance
+
+- id: aws.ec2.ebs_encrypted
+  name: EC2 instance volumes are encrypted
+  description: Encrypted EBS volumes protect data at rest and in snapshots taken from them.
+  connector: aws
+  resource: ec2_instance
+  control: CRY-01
+  severity: high
+  quantifier: all
+  assert: {field: ebs_encrypted, op: eq, value: true}
+  remediation:
+    summary: Enable EBS encryption by default and replace unencrypted volumes.
+    steps:
+      - Run `aws ec2 enable-ebs-encryption-by-default` in every region.
+      - Snapshot unencrypted volumes, copy the snapshot with `--encrypted`, create a new volume and swap it in.
+    iac_hint: terraform:aws_ebs_encryption_by_default
+
+- id: aws.ec2.ssm_managed
+  name: EC2 instances are managed by Systems Manager
+  description: SSM management enables automated patching, inventory and shell access without opening SSH.
+  connector: aws
+  resource: ec2_instance
+  control: VUL-04
+  severity: medium
+  quantifier: all
+  assert: {field: ssm_managed, op: eq, value: true}
+  remediation:
+    summary: Install the SSM Agent and attach an instance profile with AmazonSSMManagedInstanceCore.
+    steps:
+      - Attach an IAM instance profile that includes the AmazonSSMManagedInstanceCore managed policy.
+      - Ensure the SSM Agent is installed and the instance can reach SSM endpoints (VPC endpoints or NAT).
+      - Enable Default Host Management Configuration in Systems Manager > Fleet Manager.
+      - Create a Patch Manager patch policy covering the instances.
+    iac_hint: terraform:aws_iam_instance_profile
+
+- id: aws.ec2.name_tagged
+  name: EC2 instances have a Name tag
+  description: Named instances can be traced to an owner and purpose in the asset inventory.
+  connector: aws
+  resource: ec2_instance
+  control: AST-01
+  severity: low
+  quantifier: all
+  assert:
+    and:
+      - {field: name, op: exists}
+      - {field: name, op: len_gt, value: 0}
+  remediation:
+    summary: Tag every instance with a descriptive Name (and owner) tag.
+    steps:
+      - Run `aws ec2 create-tags --resources <id> --tags Key=Name,Value=<name>`.
+      - Enforce required tags with an AWS Organizations tag policy.
+    iac_hint: terraform:aws_instance
+
+# ---------------------------------------------------------------- Security groups
+
+- id: aws.sg.no_open_ssh
+  name: Security groups do not allow SSH from the internet
+  description: SSH open to 0.0.0.0/0 invites brute-force and exploitation of exposed hosts.
+  connector: aws
+  resource: security_group
+  control: NET-01
+  severity: high
+  quantifier: none
+  assert: {field: open_ssh, op: eq, value: true}
+  remediation:
+    summary: Remove 0.0.0.0/0 ingress on port 22 and use SSM Session Manager or a restricted CIDR.
+    steps:
+      - Run `aws ec2 revoke-security-group-ingress --group-id <id> --protocol tcp --port 22 --cidr 0.0.0.0/0`.
+      - Replace interactive access with SSM Session Manager or EC2 Instance Connect Endpoint.
+    iac_hint: terraform:aws_vpc_security_group_ingress_rule
+
+- id: aws.sg.no_open_rdp
+  name: Security groups do not allow RDP from the internet
+  description: RDP exposed to the internet is a leading ransomware entry vector.
+  connector: aws
+  resource: security_group
+  control: NET-01
+  severity: high
+  quantifier: none
+  assert: {field: open_rdp, op: eq, value: true}
+  remediation:
+    summary: Remove 0.0.0.0/0 ingress on port 3389 and use Fleet Manager or a VPN.
+    steps:
+      - Run `aws ec2 revoke-security-group-ingress --group-id <id> --protocol tcp --port 3389 --cidr 0.0.0.0/0`.
+      - Use Systems Manager Fleet Manager remote desktop or a VPN for administrative access.
+    iac_hint: terraform:aws_vpc_security_group_ingress_rule
+
+- id: aws.sg.no_open_all
+  name: Security groups do not allow all ports from the internet
+  description: A rule opening every port to 0.0.0.0/0 exposes every service on the attached resources.
+  connector: aws
+  resource: security_group
+  control: NET-01
+  severity: critical
+  quantifier: none
+  assert: {field: open_all, op: eq, value: true}
+  remediation:
+    summary: Replace all-port internet ingress with rules for only the required ports and sources.
+    steps:
+      - Identify required ports from VPC Flow Logs for the attached resources.
+      - Add narrowly scoped rules, then revoke the all-traffic rule with `aws ec2 revoke-security-group-ingress --group-id <id> --ip-permissions IpProtocol=-1,IpRanges=[{CidrIp=0.0.0.0/0}]`.
+    iac_hint: terraform:aws_vpc_security_group_ingress_rule
+
+- id: aws.sg.default_restricts_ingress
+  name: Default security groups allow no inbound traffic
+  description: Resources launched without an explicit group land in the default group; it should deny all traffic so that segmentation is deliberate.
+  connector: aws
+  resource: security_group
+  control: NET-03
+  severity: medium
+  quantifier: all
+  where: {field: name, op: eq, value: default}
+  assert: {field: ingress, op: len_lt, value: 1}
+  remediation:
+    summary: Remove all inbound rules from every VPC's default security group.
+    steps:
+      - In VPC > Security groups, select each group named default and delete its inbound rules.
+      - Move any resources using the default group to purpose-built security groups first.
+    iac_hint: terraform:aws_default_security_group
+
+# ---------------------------------------------------------------- KMS
+
+- id: aws.kms.rotation_enabled
+  name: Customer managed KMS keys have automatic rotation enabled
+  description: Automatic rotation limits the amount of data protected by a single key version.
+  connector: aws
+  resource: kms_key
+  control: CRY-03
+  severity: medium
+  quantifier: all
+  where: {field: customer_managed, op: eq, value: true}
+  assert: {field: rotation_enabled, op: eq, value: true}
+  remediation:
+    summary: Enable automatic annual rotation on customer managed symmetric keys.
+    steps:
+      - In KMS > Customer managed keys > key > Key rotation, enable automatic rotation.
+      - Or run `aws kms enable-key-rotation --key-id <key-id>`.
+    iac_hint: terraform:aws_kms_key
+
+# ---------------------------------------------------------------- GuardDuty
+
+- id: aws.guardduty.enabled
+  name: GuardDuty is enabled in every region
+  description: GuardDuty continuously analyses CloudTrail, VPC Flow Logs and DNS logs for threats.
+  connector: aws
+  resource: guardduty_detector
+  control: LOG-05
+  severity: high
+  quantifier: all
+  assert: {field: enabled, op: eq, value: true}
+  remediation:
+    summary: Enable GuardDuty in all regions, ideally via a delegated administrator for the organization.
+    steps:
+      - In GuardDuty, choose Get started > Enable GuardDuty in each region.
+      - Or run `aws guardduty create-detector --enable` per region.
+      - Designate a delegated admin account and enable auto-enable for organization members.
+    iac_hint: terraform:aws_guardduty_detector
+
+- id: aws.guardduty.no_high_findings
+  name: GuardDuty has no open high-severity findings
+  description: Unresolved high-severity findings indicate likely compromise that has not been triaged.
+  connector: aws
+  resource: guardduty_detector
+  control: LOG-06
+  severity: high
+  quantifier: all
+  assert: {field: high_severity_findings, op: eq, value: 0}
+  remediation:
+    summary: Investigate and resolve or archive every high-severity GuardDuty finding.
+    steps:
+      - In GuardDuty > Findings, filter by severity High and investigate each finding.
+      - Contain affected resources (isolate instances, rotate credentials) per the incident response plan.
+      - Archive resolved findings and add suppression rules only for verified benign patterns.
+      - Route findings to the on-call channel with an EventBridge rule.

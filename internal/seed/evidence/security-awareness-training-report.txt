@@ -1,0 +1,14 @@
+Security awareness training — completion report
+Generated: 2026-09-30 · Course: Annual Security Awareness 2026 (phishing, passwords, data handling)
+
+Employee            Completed     Score
+Ada Lovelace        2026-09-02    100%
+Grace Hopper        2026-09-03    95%
+Sam Patel           2026-09-10    90%
+Jo Nakamura         2026-09-11    100%
+Kim Okafor          2026-09-12    85%
+Maria Santos        2026-09-15    90%
+Tom Becker          2026-09-20    80%
+Lee Chen            2026-09-21    95%
+
+Completion: 8 / 8 (100%)

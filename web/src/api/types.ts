@@ -13,6 +13,8 @@ export interface OrgSettings {
   policy_acceptance_threshold: number
   ai_enabled: boolean
   timezone: string
+  slack_webhook_url: string
+  email_notifications: boolean
 }
 
 export interface Org {

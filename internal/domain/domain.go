@@ -93,10 +93,12 @@ type OrgSettings struct {
 	PolicyAcceptanceThreshold int    `json:"policy_acceptance_threshold"` // percent
 	AIEnabled                 bool   `json:"ai_enabled"`
 	Timezone                  string `json:"timezone"`
+	SlackWebhookURL           string `json:"slack_webhook_url"`
+	EmailNotifications        bool   `json:"email_notifications"`
 }
 
 func DefaultOrgSettings() OrgSettings {
-	return OrgSettings{AccessReviewDays: 90, PasswordMinLength: 12, PolicyAcceptanceThreshold: 90, AIEnabled: true, Timezone: "UTC"}
+	return OrgSettings{AccessReviewDays: 90, PasswordMinLength: 12, PolicyAcceptanceThreshold: 90, AIEnabled: true, Timezone: "UTC", EmailNotifications: true}
 }
 
 type User struct {

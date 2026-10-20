@@ -55,6 +55,7 @@ e2e: ## Full stack in docker + Playwright suite
 	$(COMPOSE) up -d --build
 	@echo "waiting for app..." && until curl -sf http://localhost:8080/readyz >/dev/null; do sleep 1; done
 	$(COMPOSE) exec -T app /app/trustline seed
+	$(COMPOSE) exec -T redis redis-cli FLUSHALL >/dev/null # fresh rate-limit windows for the suite
 	cd e2e && npm run test
 
 e2e-ui: ## Playwright in UI mode against an already running stack

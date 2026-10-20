@@ -1,0 +1,405 @@
+id: nist_ai_rmf
+name: NIST AI RMF
+version: "1.0 (January 2023)"
+publisher: NIST
+description: The NIST Artificial Intelligence Risk Management Framework is a voluntary framework for managing risks of AI systems to individuals, organizations and society. It organizes outcomes into four functions (Govern, Map, Measure, Manage) broken into categories and subcategories that support trustworthy AI across the life cycle.
+sections:
+  - "GOVERN 1: Policies, processes, procedures and practices"
+  - "GOVERN 2: Accountability structures"
+  - "GOVERN 3: Workforce diversity, equity, inclusion and accessibility"
+  - "GOVERN 4: Organizational culture of risk communication"
+  - "GOVERN 5: Engagement with relevant AI actors"
+  - "GOVERN 6: Third-party software, data and supply chain"
+  - "MAP 1: Context is established and understood"
+  - "MAP 2: Categorization of the AI system"
+  - "MAP 3: Capabilities, targeted usage, goals, benefits and costs"
+  - "MAP 4: Risks and benefits mapped for all components"
+  - "MAP 5: Impacts to individuals, groups, communities and society"
+  - "MEASURE 1: Appropriate methods and metrics"
+  - "MEASURE 2: Evaluation for trustworthy characteristics"
+  - "MEASURE 3: Mechanisms for tracking identified risks"
+  - "MEASURE 4: Feedback about measurement efficacy"
+  - "MANAGE 1: Prioritization and response to mapped and measured risks"
+  - "MANAGE 2: Strategies to maximize benefits and minimize impacts"
+  - "MANAGE 3: Third-party risks and benefits"
+  - "MANAGE 4: Risk treatment, response, recovery and communication"
+requirements:
+  # GOVERN 1
+  - code: GOVERN 1.1
+    section: "GOVERN 1: Policies, processes, procedures and practices"
+    title: Legal and regulatory requirements involving AI are understood and managed
+    description: The organization identifies the laws, regulations and other obligations that apply to its AI activities, documents them, and manages compliance with them.
+    controls: [GOV-08, AI-03]
+  - code: GOVERN 1.2
+    section: "GOVERN 1: Policies, processes, procedures and practices"
+    title: Trustworthy AI characteristics are built into policies and practices
+    description: Organizational policies, processes and procedures incorporate the characteristics of trustworthy AI, such as validity, safety, fairness, transparency and privacy.
+    controls: [AI-03, GOV-01]
+  - code: GOVERN 1.3
+    section: "GOVERN 1: Policies, processes, procedures and practices"
+    title: Risk management effort is scaled to the organization's risk tolerance
+    description: Processes are in place to decide how much risk management activity is needed for an AI system, based on the organization's risk tolerance.
+    controls: [RSK-01, RSK-02, AI-02]
+  - code: GOVERN 1.4
+    section: "GOVERN 1: Policies, processes, procedures and practices"
+    title: Risk management process and outcomes are transparent
+    description: The AI risk management process and its results are established through transparent policies, procedures and controls grounded in organizational risk priorities.
+    controls: [RSK-02, AI-03, GOV-03]
+  - code: GOVERN 1.5
+    section: "GOVERN 1: Policies, processes, procedures and practices"
+    title: Ongoing monitoring and periodic review of AI risk management is planned
+    description: Monitoring and periodic review of the risk management process and its results are planned, with roles and review frequency clearly defined.
+    controls: [GOV-04, RSK-01, AI-04]
+  - code: GOVERN 1.6
+    section: "GOVERN 1: Policies, processes, procedures and practices"
+    title: AI systems are inventoried
+    description: Mechanisms exist to inventory AI systems, with resources allocated according to organizational risk priorities.
+    controls: [AI-01, AST-01]
+  - code: GOVERN 1.7
+    section: "GOVERN 1: Policies, processes, procedures and practices"
+    title: AI systems are decommissioned safely
+    description: Processes exist to retire and phase out AI systems safely, without increasing risk or reducing trustworthiness, including handling of associated data.
+    controls: [AI-01, DAT-02, CHG-05]
+  # GOVERN 2
+  - code: GOVERN 2.1
+    section: "GOVERN 2: Accountability structures"
+    title: Roles and responsibilities for AI risk are documented and communicated
+    description: Roles, responsibilities and lines of communication for mapping, measuring and managing AI risk are documented and clearly understood across the organization.
+    controls: [GOV-02, GOV-07]
+  - code: GOVERN 2.2
+    section: "GOVERN 2: Accountability structures"
+    title: Personnel receive AI risk management training
+    description: Personnel and partners receive training so they can carry out their AI risk management duties in line with policies and agreements.
+    controls: [HR-02, AI-03]
+  - code: GOVERN 2.3
+    section: "GOVERN 2: Accountability structures"
+    title: Executive leadership takes responsibility for AI risk decisions
+    description: Senior leadership is accountable for decisions about risks arising from AI development and deployment.
+    controls: [GOV-03, RSK-02]
+  # GOVERN 3
+  - code: GOVERN 3.1
+    section: "GOVERN 3: Workforce diversity, equity, inclusion and accessibility"
+    title: Decision-making draws on diverse teams
+    description: Decisions on mapping, measuring and managing AI risk throughout the life cycle are informed by a diverse team with varied demographics, disciplines, experience and perspectives.
+    controls: [GOV-02, AI-02]
+  - code: GOVERN 3.2
+    section: "GOVERN 3: Workforce diversity, equity, inclusion and accessibility"
+    title: Human-AI roles and oversight responsibilities are defined
+    description: Policies define roles and responsibilities for human oversight of AI systems and for configurations involving humans and AI working together.
+    controls: [AI-05, GOV-02]
+  # GOVERN 4
+  - code: GOVERN 4.1
+    section: "GOVERN 4: Organizational culture of risk communication"
+    title: Safety-first mindset is fostered in AI design and deployment
+    description: Policies and practices encourage critical thinking and a safety-first approach to designing, developing, deploying and using AI so that potential negative impacts are minimized.
+    controls: [AI-03, DEV-01]
+  - code: GOVERN 4.2
+    section: "GOVERN 4: Organizational culture of risk communication"
+    title: Risks and impacts of AI are documented and communicated
+    description: Teams document the risks and potential impacts of the AI technology they build, use or test, and communicate those impacts more broadly.
+    controls: [AI-02, AI-07]
+  - code: GOVERN 4.3
+    section: "GOVERN 4: Organizational culture of risk communication"
+    title: Practices enable AI testing, incident identification and information sharing
+    description: Organizational practices support testing of AI systems, identification of incidents and sharing of information about them.
+    controls: [AI-08, IR-04, AI-04]
+  # GOVERN 5
+  - code: GOVERN 5.1
+    section: "GOVERN 5: Engagement with relevant AI actors"
+    title: External feedback on AI impacts is collected and integrated
+    description: Policies and practices exist to gather, consider and prioritize feedback from people outside the development team about potential individual and societal impacts of AI.
+    controls: [AI-08, AI-02]
+  - code: GOVERN 5.2
+    section: "GOVERN 5: Engagement with relevant AI actors"
+    title: Feedback is incorporated into system design and implementation
+    description: Mechanisms let AI actors regularly feed adjudicated feedback from relevant stakeholders back into the design and implementation of AI systems.
+    controls: [AI-08, CHG-05]
+  # GOVERN 6
+  - code: GOVERN 6.1
+    section: "GOVERN 6: Third-party software, data and supply chain"
+    title: Third-party AI risks are addressed by policy
+    description: Policies and procedures address risks from third-party entities, including infringement of intellectual property or other rights.
+    controls: [VEN-02, VEN-03, VEN-01]
+  - code: GOVERN 6.2
+    section: "GOVERN 6: Third-party software, data and supply chain"
+    title: Contingency processes cover failures of high-risk third-party AI
+    description: Contingency plans handle failures or incidents in third-party data or AI systems that are considered high risk.
+    controls: [BCP-01, VEN-02, IR-01]
+  # MAP 1
+  - code: MAP 1.1
+    section: "MAP 1: Context is established and understood"
+    title: Intended purpose, context and potential impacts are documented
+    description: The intended purposes, beneficial uses, applicable laws, norms, deployment settings and potential positive and negative impacts of the AI system are understood and documented.
+    controls: [AI-01, AI-02, GOV-08]
+  - code: MAP 1.2
+    section: "MAP 1: Context is established and understood"
+    title: Interdisciplinary and diverse actors participate in context mapping
+    description: The people establishing the AI system's context are interdisciplinary and diverse in competencies and backgrounds, and their participation is documented.
+    controls: [GOV-02, AI-02]
+  - code: MAP 1.3
+    section: "MAP 1: Context is established and understood"
+    title: Organizational mission and AI goals are understood
+    description: The organization's mission and its goals for the AI technology are understood and documented.
+    controls: [AI-01, AI-03]
+  - code: MAP 1.4
+    section: "MAP 1: Context is established and understood"
+    title: Business value or context of use is defined
+    description: The business value or context of business use of the AI system is clearly defined, or re-evaluated when assessing an existing system.
+    controls: [AI-01]
+  - code: MAP 1.5
+    section: "MAP 1: Context is established and understood"
+    title: Organizational risk tolerances are determined
+    description: The organization's risk tolerances for the AI system are determined and documented.
+    controls: [RSK-01, RSK-02]
+  - code: MAP 1.6
+    section: "MAP 1: Context is established and understood"
+    title: System requirements consider stakeholder needs and socio-technical factors
+    description: System requirements are gathered from relevant AI actors and account for socio-technical implications to address AI risks.
+    controls: [AI-02, DEV-01]
+  # MAP 2
+  - code: MAP 2.1
+    section: "MAP 2: Categorization of the AI system"
+    title: Tasks and methods of the AI system are defined
+    description: The specific tasks and methods the AI system uses to perform them, such as classifiers or generative models, are defined.
+    controls: [AI-01, AI-07]
+  - code: MAP 2.2
+    section: "MAP 2: Categorization of the AI system"
+    title: Knowledge limits and human oversight needs are documented
+    description: Information about the system's knowledge limits and how its output may be used and overseen by humans is documented.
+    controls: [AI-07, AI-05]
+  - code: MAP 2.3
+    section: "MAP 2: Categorization of the AI system"
+    title: Scientific integrity and TEVV considerations are documented
+    description: Considerations for scientific integrity and test, evaluation, verification and validation (TEVV), including experimental design and data selection, are identified and documented.
+    controls: [AI-04, AI-06]
+  # MAP 3
+  - code: MAP 3.1
+    section: "MAP 3: Capabilities, targeted usage, goals, benefits and costs"
+    title: Potential benefits of intended functionality are examined
+    description: The expected benefits of the AI system's intended functionality and performance are examined and documented.
+    controls: [AI-02]
+  - code: MAP 3.2
+    section: "MAP 3: Capabilities, targeted usage, goals, benefits and costs"
+    title: Potential costs including non-monetary costs are examined
+    description: Potential costs from AI errors or system behavior, including non-monetary costs tied to organizational risk tolerance, are examined and documented.
+    controls: [AI-02, RSK-01]
+  - code: MAP 3.3
+    section: "MAP 3: Capabilities, targeted usage, goals, benefits and costs"
+    title: Targeted application scope is specified
+    description: The scope of the intended application is specified and documented based on the system's capability, established context and categorization.
+    controls: [AI-01, AI-03]
+  - code: MAP 3.4
+    section: "MAP 3: Capabilities, targeted usage, goals, benefits and costs"
+    title: Operator and practitioner proficiency is defined and assessed
+    description: Processes for operator and practitioner proficiency with AI system performance and trustworthiness are defined, assessed and documented.
+    controls: [HR-02, AI-05]
+  - code: MAP 3.5
+    section: "MAP 3: Capabilities, targeted usage, goals, benefits and costs"
+    title: Human oversight processes are defined
+    description: Processes for human oversight are defined, assessed and documented in line with organizational policies.
+    controls: [AI-05]
+  # MAP 4
+  - code: MAP 4.1
+    section: "MAP 4: Risks and benefits mapped for all components"
+    title: Legal and technology risks of components are mapped
+    description: Approaches for mapping AI technology and the legal risks of its components, including third-party data and software, are in place and documented.
+    controls: [VEN-02, GOV-08, AI-06]
+  - code: MAP 4.2
+    section: "MAP 4: Risks and benefits mapped for all components"
+    title: Internal risk controls for components are identified
+    description: Internal risk controls for AI system components, including third-party technologies, are identified and documented.
+    controls: [RSK-02, VEN-02]
+  # MAP 5
+  - code: MAP 5.1
+    section: "MAP 5: Impacts to individuals, groups, communities and society"
+    title: Likelihood and magnitude of impacts are identified
+    description: The likelihood and magnitude of each identified beneficial or harmful impact are documented, drawing on expected use, past uses in similar contexts, incident reports and external feedback.
+    controls: [AI-02, DAT-08]
+  - code: MAP 5.2
+    section: "MAP 5: Impacts to individuals, groups, communities and society"
+    title: Regular engagement with relevant AI actors is supported
+    description: Practices support regular engagement with relevant AI actors and integration of their feedback about positive, negative and unanticipated impacts.
+    controls: [AI-08]
+  # MEASURE 1
+  - code: MEASURE 1.1
+    section: "MEASURE 1: Appropriate methods and metrics"
+    title: Measurement approaches are selected for significant risks
+    description: Methods and metrics are chosen to measure the most significant AI risks identified during mapping, and risks that cannot be measured are documented.
+    controls: [AI-04, RSK-02]
+  - code: MEASURE 1.2
+    section: "MEASURE 1: Appropriate methods and metrics"
+    title: Metrics and controls are regularly assessed and updated
+    description: The appropriateness of AI metrics and the effectiveness of existing controls are regularly assessed and updated, including reports of errors and impacts on affected communities.
+    controls: [AI-04, GOV-04]
+  - code: MEASURE 1.3
+    section: "MEASURE 1: Appropriate methods and metrics"
+    title: Independent assessors are involved in regular assessments
+    description: Internal experts who were not front-line developers, or independent external assessors, take part in regular assessments and updates.
+    controls: [AI-02, GOV-03]
+  # MEASURE 2
+  - code: MEASURE 2.1
+    section: "MEASURE 2: Evaluation for trustworthy characteristics"
+    title: Test sets, metrics and TEVV tools are documented
+    description: The test sets, metrics and tools used during test, evaluation, verification and validation are documented.
+    controls: [AI-04, AI-06]
+  - code: MEASURE 2.2
+    section: "MEASURE 2: Evaluation for trustworthy characteristics"
+    title: Human-subject evaluations meet protection requirements
+    description: Evaluations involving human subjects meet applicable protection requirements and represent the relevant population.
+    controls: [AI-06, DAT-08]
+  - code: MEASURE 2.3
+    section: "MEASURE 2: Evaluation for trustworthy characteristics"
+    title: Performance is measured in deployment-like conditions
+    description: System performance or assurance criteria are measured qualitatively or quantitatively under conditions similar to deployment, and the measures are documented.
+    controls: [AI-04]
+  - code: MEASURE 2.4
+    section: "MEASURE 2: Evaluation for trustworthy characteristics"
+    title: System behavior is monitored in production
+    description: The functionality and behavior of the AI system and its components are monitored when in production.
+    controls: [AI-04, LOG-01]
+  - code: MEASURE 2.5
+    section: "MEASURE 2: Evaluation for trustworthy characteristics"
+    title: System is shown to be valid and reliable
+    description: The AI system is demonstrated to be valid and reliable, and the limits of its generalizability beyond development conditions are documented.
+    controls: [AI-04, AI-07]
+  - code: MEASURE 2.6
+    section: "MEASURE 2: Evaluation for trustworthy characteristics"
+    title: Safety risks are regularly evaluated
+    description: The AI system is regularly evaluated for safety risks, shown to be safe within its residual risk, and able to fail safely when operating beyond its knowledge limits.
+    controls: [AI-02, AI-04, AI-05]
+  - code: MEASURE 2.7
+    section: "MEASURE 2: Evaluation for trustworthy characteristics"
+    title: Security and resilience are evaluated and documented
+    description: The security and resilience of the AI system are evaluated and documented.
+    controls: [VUL-03, VUL-01, BCP-01]
+  - code: MEASURE 2.8
+    section: "MEASURE 2: Evaluation for trustworthy characteristics"
+    title: Transparency and accountability risks are examined
+    description: Risks related to transparency and accountability of the AI system are examined and documented.
+    controls: [AI-07, GOV-02]
+  - code: MEASURE 2.9
+    section: "MEASURE 2: Evaluation for trustworthy characteristics"
+    title: Model is explained and output is interpreted in context
+    description: The AI model is explained, validated and documented, and its output is interpreted within its context to support responsible use and governance.
+    controls: [AI-07]
+  - code: MEASURE 2.10
+    section: "MEASURE 2: Evaluation for trustworthy characteristics"
+    title: Privacy risk is examined and documented
+    description: Privacy risks of the AI system are examined and documented.
+    controls: [DAT-08, AI-06, DAT-07]
+  - code: MEASURE 2.11
+    section: "MEASURE 2: Evaluation for trustworthy characteristics"
+    title: Fairness and bias are evaluated
+    description: Fairness and bias of the AI system are evaluated and the results documented.
+    controls: [AI-02, AI-06]
+  - code: MEASURE 2.12
+    section: "MEASURE 2: Evaluation for trustworthy characteristics"
+    title: Environmental impact and sustainability are assessed
+    description: The environmental impact and sustainability of training and operating AI models are assessed and documented.
+    controls: [AI-02]
+  - code: MEASURE 2.13
+    section: "MEASURE 2: Evaluation for trustworthy characteristics"
+    title: Effectiveness of TEVV metrics and processes is evaluated
+    description: The effectiveness of the metrics and processes used for test, evaluation, verification and validation is evaluated and documented.
+    controls: [AI-04, GOV-04]
+  # MEASURE 3
+  - code: MEASURE 3.1
+    section: "MEASURE 3: Mechanisms for tracking identified risks"
+    title: Existing, unanticipated and emergent risks are tracked over time
+    description: Approaches, personnel and documentation are in place to regularly identify and track existing, unanticipated and emergent AI risks.
+    controls: [RSK-02, AI-04]
+  - code: MEASURE 3.2
+    section: "MEASURE 3: Mechanisms for tracking identified risks"
+    title: Risks that are hard to measure are tracked
+    description: Risk tracking approaches are considered for settings where risks are difficult to assess with current measurement techniques or where metrics are not yet available.
+    controls: [RSK-02]
+  - code: MEASURE 3.3
+    section: "MEASURE 3: Mechanisms for tracking identified risks"
+    title: End users can report problems and appeal outcomes
+    description: Feedback processes let end users and affected communities report problems and appeal system outcomes, and these are integrated into evaluation metrics.
+    controls: [AI-08, AI-05]
+  # MEASURE 4
+  - code: MEASURE 4.1
+    section: "MEASURE 4: Feedback about measurement efficacy"
+    title: Measurement approaches are informed by deployment context
+    description: Measurement approaches for identifying AI risks are connected to deployment contexts and informed by domain experts and end users.
+    controls: [AI-04, AI-08]
+  - code: MEASURE 4.2
+    section: "MEASURE 4: Feedback about measurement efficacy"
+    title: Trustworthiness results are validated with stakeholders
+    description: Measurement results about trustworthiness in deployment are informed by domain experts and relevant AI actors to confirm the system performs consistently as intended.
+    controls: [AI-04, AI-08]
+  - code: MEASURE 4.3
+    section: "MEASURE 4: Feedback about measurement efficacy"
+    title: Performance improvements and declines are identified
+    description: Measurable improvements or declines in performance are identified from consultation with stakeholders and field data on context-relevant risks and trustworthiness.
+    controls: [AI-04]
+  # MANAGE 1
+  - code: MANAGE 1.1
+    section: "MANAGE 1: Prioritization and response to mapped and measured risks"
+    title: Go/no-go decision on whether the AI system meets its purpose
+    description: A determination is made as to whether the AI system achieves its intended purposes and objectives and whether its development or deployment should proceed.
+    controls: [AI-02, GOV-03]
+  - code: MANAGE 1.2
+    section: "MANAGE 1: Prioritization and response to mapped and measured risks"
+    title: Documented AI risks are prioritized
+    description: Treatment of documented AI risks is prioritized based on impact, likelihood and available resources or methods.
+    controls: [RSK-02]
+  - code: MANAGE 1.3
+    section: "MANAGE 1: Prioritization and response to mapped and measured risks"
+    title: Responses to high-priority risks are developed and documented
+    description: Responses to high-priority AI risks, such as mitigating, transferring, avoiding or accepting them, are developed, planned and documented.
+    controls: [RSK-02]
+  - code: MANAGE 1.4
+    section: "MANAGE 1: Prioritization and response to mapped and measured risks"
+    title: Residual risks are documented
+    description: Negative residual risks to downstream acquirers and end users are documented.
+    controls: [RSK-02, AI-07]
+  # MANAGE 2
+  - code: MANAGE 2.1
+    section: "MANAGE 2: Strategies to maximize benefits and minimize impacts"
+    title: Resources for managing AI risk and alternatives are considered
+    description: The resources needed to manage AI risks are taken into account, along with viable non-AI alternatives, to reduce the magnitude or likelihood of impacts.
+    controls: [RSK-02, AI-02]
+  - code: MANAGE 2.2
+    section: "MANAGE 2: Strategies to maximize benefits and minimize impacts"
+    title: Value of deployed AI is sustained
+    description: Mechanisms are in place and applied to sustain the value of deployed AI systems.
+    controls: [AI-04]
+  - code: MANAGE 2.3
+    section: "MANAGE 2: Strategies to maximize benefits and minimize impacts"
+    title: Procedures exist to respond to previously unknown risks
+    description: Procedures are followed to respond to and recover from AI risks that were previously unknown once they are identified.
+    controls: [AI-08, IR-01]
+  - code: MANAGE 2.4
+    section: "MANAGE 2: Strategies to maximize benefits and minimize impacts"
+    title: AI systems can be superseded, disengaged or deactivated
+    description: Mechanisms and responsibilities exist to supersede, disengage or deactivate AI systems that show performance or outcomes inconsistent with intended use.
+    controls: [AI-05, IR-01]
+  # MANAGE 3
+  - code: MANAGE 3.1
+    section: "MANAGE 3: Third-party risks and benefits"
+    title: Third-party AI risks and benefits are monitored
+    description: Risks and benefits from third-party resources are regularly monitored, and risk controls are applied and documented.
+    controls: [VEN-02, VEN-01]
+  - code: MANAGE 3.2
+    section: "MANAGE 3: Third-party risks and benefits"
+    title: Pre-trained models are monitored
+    description: Pre-trained models used for development are monitored as part of regular monitoring and maintenance of the AI system.
+    controls: [AI-04, VEN-02, AI-01]
+  # MANAGE 4
+  - code: MANAGE 4.1
+    section: "MANAGE 4: Risk treatment, response, recovery and communication"
+    title: Post-deployment monitoring plans are implemented
+    description: Post-deployment monitoring plans are implemented, including mechanisms for capturing user input, appeal and override, decommissioning, incident response, recovery and change management.
+    controls: [AI-04, AI-05, AI-08, CHG-05]
+  - code: MANAGE 4.2
+    section: "MANAGE 4: Risk treatment, response, recovery and communication"
+    title: Continual improvement activities are integrated
+    description: Measurable activities for continual improvement are built into AI system updates and include regular engagement with interested parties.
+    controls: [AI-04, AI-08, CHG-05]
+  - code: MANAGE 4.3
+    section: "MANAGE 4: Risk treatment, response, recovery and communication"
+    title: Incidents and errors are communicated and tracked
+    description: Incidents and errors are communicated to relevant AI actors, including affected communities, and processes for tracking, responding to and recovering from them are followed and documented.
+    controls: [AI-08, IR-04, IR-03]

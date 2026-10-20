@@ -196,11 +196,19 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	in.Email = strings.TrimSpace(strings.ToLower(in.Email))
-	if s.limited(w, r, "login:ip:"+clientIP(r), 300, 10*time.Minute) || s.limited(w, r, "login:email:"+in.Email, 10, 10*time.Minute) {
+	// Per-IP: all attempts. Per-email: failed attempts only (brute-force guard),
+	// so legitimate repeated sign-ins never lock an account.
+	if s.limited(w, r, "login:ip:"+clientIP(r), 300, 10*time.Minute) {
+		return
+	}
+	emailKey := "login:fail:" + in.Email
+	if ok, err := s.limiter.Peek(r.Context(), emailKey, 10, 10*time.Minute); err == nil && !ok {
+		writeError(w, 429, "rate_limited", "too many attempts, try again later")
 		return
 	}
 	u, hash, err := s.users().ByEmail(r.Context(), s.pool, in.Email)
 	if err != nil || hash == "" || !auth.VerifyPassword(hash, in.Password) {
+		_, _ = s.limiter.Allow(r.Context(), emailKey, 10, 10*time.Minute)
 		if err == nil || errors.Is(err, domain.ErrNotFound) {
 			// Burn time comparably when user is missing to limit enumeration.
 			if err != nil {

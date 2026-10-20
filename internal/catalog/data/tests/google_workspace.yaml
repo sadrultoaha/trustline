@@ -1,0 +1,238 @@
+# Automated tests for Google Workspace. See ../README.md for the format.
+
+# ---------------------------------------------------------------- Users
+
+- id: google_workspace.users.two_step_enrolled
+  name: Active Google Workspace users are enrolled in 2-Step Verification
+  description: 2SV protects mail, documents and every app that uses Google sign-in from password-only compromise.
+  connector: google_workspace
+  resource: user
+  control: IAM-01
+  severity: high
+  quantifier: all
+  where: {field: suspended, op: eq, value: false}
+  assert: {field: two_step_enrolled, op: eq, value: true}
+  remediation:
+    summary: Have every user enrol in 2SV and then enforce it.
+    steps:
+      - In Admin console > Reporting > User reports > Security, filter for 2SV enrollment = Not enrolled.
+      - Contact users or set a new-user enrolment period under Security > Authentication > 2-step verification.
+      - Turn on enforcement once enrolment is complete.
+    iac_hint: terraform:googleworkspace_user
+
+- id: google_workspace.users.admins_two_step
+  name: Super admins are enrolled in 2-Step Verification
+  description: Super admins control the whole tenant; their accounts must have a strong second factor.
+  connector: google_workspace
+  resource: user
+  control: IAM-01
+  severity: critical
+  quantifier: all
+  where:
+    and:
+      - {field: suspended, op: eq, value: false}
+      - {field: is_admin, op: eq, value: true}
+  assert: {field: two_step_enrolled, op: eq, value: true}
+  remediation:
+    summary: Enrol every super admin in 2SV with security keys or passkeys.
+    steps:
+      - Ask each super admin to enrol at myaccount.google.com > Security > 2-Step Verification.
+      - Place super admins in an OU where only security keys are allowed.
+    iac_hint: terraform:googleworkspace_user
+
+- id: google_workspace.users.inactive
+  name: Active Google Workspace users have signed in within 90 days
+  description: Unused accounts retain mail and Drive access and are prime targets for takeover.
+  connector: google_workspace
+  resource: user
+  control: IAM-07
+  severity: medium
+  quantifier: all
+  where: {field: suspended, op: eq, value: false}
+  assert: {field: last_login_days, op: lte, value: 90}
+  remediation:
+    summary: Suspend accounts with no sign-in for more than 90 days after confirming with the owner's manager.
+    steps:
+      - In Admin console > Directory > Users, add the Last sign-in column and filter for older than 90 days.
+      - Suspend the user, transfer data if needed, and delete per the offboarding procedure.
+    iac_hint: terraform:googleworkspace_user
+
+- id: google_workspace.users.limited_super_admins
+  name: Google Workspace has at most 4 super admins
+  description: Super admin is the most powerful role; it should be held by a small, named group.
+  connector: google_workspace
+  resource: user
+  control: IAM-05
+  severity: medium
+  quantifier: count
+  max: 4
+  where: {field: suspended, op: eq, value: false}
+  assert: {field: is_admin, op: eq, value: true}
+  remediation:
+    summary: Remove super admin from users who only need delegated admin privileges.
+    steps:
+      - In Admin console > Account > Admin roles > Super Admin, review assigned admins.
+      - Assign narrower prebuilt or custom admin roles and unassign Super Admin.
+    iac_hint: terraform:googleworkspace_role_assignment
+
+- id: google_workspace.users.backup_super_admin
+  name: Google Workspace has at least 2 super admins
+  description: A second super admin avoids lock-out of the tenant if the primary administrator is unavailable.
+  connector: google_workspace
+  resource: user
+  control: IAM-08
+  severity: low
+  quantifier: count
+  min: 2
+  where: {field: suspended, op: eq, value: false}
+  assert: {field: is_admin, op: eq, value: true}
+  remediation:
+    summary: Designate a second super admin or a protected break-glass account.
+    steps:
+      - Create a dedicated break-glass account protected by a hardware key and stored per the break-glass procedure.
+      - In Admin console > Account > Admin roles > Super Admin, assign the role.
+    iac_hint: terraform:googleworkspace_role_assignment
+
+- id: google_workspace.users.suspended_not_admin
+  name: Suspended users hold no super admin role
+  description: Admin roles on suspended accounts are restored instantly if the account is reactivated.
+  connector: google_workspace
+  resource: user
+  control: IAM-05
+  severity: medium
+  quantifier: all
+  where: {field: suspended, op: eq, value: true}
+  assert: {field: is_admin, op: eq, value: false}
+  remediation:
+    summary: Remove admin roles from suspended users.
+    steps:
+      - In Admin console > Directory > Users, open each suspended user > Admin roles and privileges and unassign roles.
+    iac_hint: terraform:googleworkspace_role_assignment
+
+# ---------------------------------------------------------------- Domain settings
+
+- id: google_workspace.domain.two_step_enforced
+  name: 2-Step Verification is enforced for the domain
+  description: Enforcement guarantees that users cannot opt out of 2SV.
+  connector: google_workspace
+  resource: domain
+  control: IAM-01
+  severity: high
+  quantifier: all
+  assert: {field: two_step_enforced, op: eq, value: true}
+  remediation:
+    summary: Turn on 2SV enforcement for all organizational units.
+    steps:
+      - In Admin console > Security > Authentication > 2-step verification, tick Allow users to turn on 2-Step Verification.
+      - Set Enforcement to On (with a new user enrolment period) for the top-level OU.
+
+- id: google_workspace.domain.password_min_length
+  name: Google Workspace passwords require at least 12 characters
+  description: Longer passwords resist guessing and credential stuffing.
+  connector: google_workspace
+  resource: domain
+  control: IAM-06
+  severity: medium
+  quantifier: all
+  assert: {field: password_min_length, op: gte, value: 12}
+  remediation:
+    summary: Set the minimum password length to 12 and enforce it at next sign-in.
+    steps:
+      - In Admin console > Security > Authentication > Password management, set Minimum length to 12.
+      - Tick Enforce password policy at next sign-in.
+
+- id: google_workspace.domain.less_secure_apps_disabled
+  name: Less secure app access is disabled
+  description: Less secure apps authenticate with only a password, bypassing 2-Step Verification.
+  connector: google_workspace
+  resource: domain
+  control: IAM-01
+  severity: high
+  quantifier: all
+  assert: {field: less_secure_apps_allowed, op: eq, value: false}
+  remediation:
+    summary: Disable less secure app access for all users.
+    steps:
+      - In Admin console > Security > Access and data control > Less secure apps, select Disable access.
+      - Move affected mail clients to OAuth-capable versions.
+
+- id: google_workspace.domain.external_sharing_restricted
+  name: Drive external sharing is off or limited to allowlisted domains
+  description: Unrestricted external sharing makes it easy to leak documents outside the organization.
+  connector: google_workspace
+  resource: domain
+  control: DAT-01
+  severity: medium
+  quantifier: all
+  assert: {field: external_sharing_default, op: in, value: ["off", allowlisted]}
+  remediation:
+    summary: Restrict Drive sharing outside the domain to allowlisted partner domains.
+    steps:
+      - In Admin console > Apps > Google Workspace > Drive and Docs > Sharing settings, set Sharing outside of the domain to Allowlisted domains.
+      - Add trusted partner domains under Allowlisted domains.
+
+- id: google_workspace.domain.session_length
+  name: Google web sessions expire within 12 hours
+  description: Bounded session length forces re-authentication and limits the use of stolen session cookies.
+  connector: google_workspace
+  resource: domain
+  control: IAM-11
+  severity: medium
+  quantifier: all
+  assert: {field: session_length_hours, op: lte, value: 12}
+  remediation:
+    summary: Set the Google session control web session duration to 12 hours or less.
+    steps:
+      - In Admin console > Security > Access and data control > Google Session control, set Web session duration to 12 hours.
+
+# ---------------------------------------------------------------- Third-party OAuth grants
+
+- id: google_workspace.oauth.unverified_no_high_risk
+  name: Unverified third-party apps do not hold high-risk scopes
+  description: Unverified apps with full Drive or Gmail access can exfiltrate data without any vendor vetting.
+  connector: google_workspace
+  resource: oauth_grant
+  control: VEN-02
+  severity: high
+  quantifier: all
+  where: {field: verified, op: eq, value: false}
+  assert: {field: high_risk_scopes, op: eq, value: false}
+  remediation:
+    summary: Block or restrict unverified apps that request Drive or Gmail full access.
+    steps:
+      - In Admin console > Security > Access and data control > API controls > App access control, review the app.
+      - Set the app to Blocked, or Limited, and revoke existing tokens.
+      - Restrict unconfigured third-party apps from accessing Google data by default.
+
+- id: google_workspace.oauth.high_risk_reviewed
+  name: High-risk third-party apps are limited to 25 users or fewer
+  description: Widely granted apps with full mail or Drive access concentrate data exposure and should be vendor-reviewed and explicitly trusted.
+  connector: google_workspace
+  resource: oauth_grant
+  control: VEN-02
+  severity: medium
+  quantifier: all
+  where: {field: high_risk_scopes, op: eq, value: true}
+  assert: {field: users, op: lte, value: 25}
+  remediation:
+    summary: Review widely used high-risk apps, then trust them explicitly or restrict access.
+    steps:
+      - Complete a vendor security review for each app above the threshold.
+      - In API controls > App access control, mark reviewed apps as Trusted and block the rest.
+      - Restrict access to the OUs that need the app.
+
+- id: google_workspace.oauth.widely_used_verified
+  name: Third-party apps used by more than 10 people are publisher-verified
+  description: Google verification provides a baseline of publisher identity for apps adopted across the organization.
+  connector: google_workspace
+  resource: oauth_grant
+  control: VEN-01
+  severity: low
+  quantifier: all
+  where: {field: users, op: gt, value: 10}
+  assert: {field: verified, op: eq, value: true}
+  remediation:
+    summary: Review widely used unverified apps and add approved ones to the vendor inventory.
+    steps:
+      - In API controls > App access control, review apps with many users.
+      - Record approved apps in the vendor inventory and block unapproved ones.

@@ -148,6 +148,9 @@ func (s *Service) Update(ctx context.Context, orgID domain.ID, in UpdateOrg, act
 			if _, err := time.LoadLocation(in.Settings.Timezone); err != nil {
 				v.Add("settings.timezone", "unknown timezone")
 			}
+			if u := strings.TrimSpace(in.Settings.SlackWebhookURL); u != "" && !strings.HasPrefix(u, "https://") && !strings.HasPrefix(u, "http://") {
+				v.Add("settings.slack_webhook_url", "must be an http(s) URL")
+			}
 			if err := v.Err(); err != nil {
 				return err
 			}

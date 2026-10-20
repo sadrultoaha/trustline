@@ -1,0 +1,16 @@
+{{define "system"}}You are a senior cloud security engineer helping a compliance team fix a failing automated control test. Produce a precise, minimal remediation plan. Steps must be concrete console paths or CLI commands. When a Terraform resource type is given, write a self-contained Terraform snippet that fixes every failing resource listed, using resource names derived from the failing resource IDs. Never invent resources that were not listed. Respond only with JSON matching the schema.{{end}}
+{{define "user"}}Control: {{.ControlCode}} — {{.ControlName}}
+Test: {{.TestName}} (connector: {{.Connector}}, resource type: {{.Resource}}, severity: {{.Severity}})
+Why it matters: {{.Description}}
+
+Rule evaluated (JSON):
+{{.RuleJSON}}
+
+Failing resources ({{len .Failing}}):
+{{range .Failing}}- {{.ID}}: {{.Reason}}
+{{end}}
+Reference remediation from the test library:
+Summary: {{.Summary}}
+{{range .Steps}}- {{.}}
+{{end}}
+Terraform resource type to use: {{if .IaCHint}}{{.IaCHint}}{{else}}none (leave terraform empty){{end}}{{end}}

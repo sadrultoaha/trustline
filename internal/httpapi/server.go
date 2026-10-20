@@ -15,6 +15,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/trustline/trustline/internal/auth"
 	"github.com/trustline/trustline/internal/auth/oauth"
+	"github.com/trustline/trustline/internal/compliance"
 	"github.com/trustline/trustline/internal/config"
 	"github.com/trustline/trustline/internal/jobs"
 	"github.com/trustline/trustline/internal/org"
@@ -32,6 +33,7 @@ type Server struct {
 	jobs     *jobs.Client
 	oauth    oauth.Provider
 	limiter  ratelimit.Limiter
+	comp     *compliance.Service
 	// Mount lets later phases register module routers under /api/v1 with tenant middleware applied.
 	modules []func(r chi.Router)
 }
@@ -45,6 +47,8 @@ type Deps struct {
 	OAuth    oauth.Provider
 	Limiter  ratelimit.Limiter
 	Sessions *auth.Sessions
+	// Compliance is required for Phase 1+ routes.
+	Compliance *compliance.Service
 }
 
 func New(d Deps) *Server {
@@ -58,6 +62,7 @@ func New(d Deps) *Server {
 		jobs:     d.Jobs,
 		oauth:    d.OAuth,
 		limiter:  d.Limiter,
+		comp:     d.Compliance,
 	}
 	if s.sessions == nil {
 		s.sessions = auth.NewSessions(d.Pool, d.Config.SessionTTL)
@@ -108,6 +113,11 @@ func (s *Server) Handler() http.Handler {
 			authed.Post("/me/password", s.changePassword)
 			authed.Post("/me/switch-org", s.switchOrg)
 			authed.Post("/orgs", s.createOrg)
+			authed.Group(func(t chi.Router) {
+				t.Use(s.requireOrg)
+				t.Get("/notifications", s.listNotifications)
+				t.Post("/notifications/read", s.readNotifications)
+			})
 
 			authed.Group(func(t chi.Router) {
 				t.Use(s.requireOrg)
@@ -122,6 +132,9 @@ func (s *Server) Handler() http.Handler {
 				t.With(s.require(permMembersWrite)).Delete("/org/invites/{id}", s.revokeInvite)
 				t.With(s.require(permMembersWrite)).Post("/org/invites/{id}/resend", s.resendInvite)
 				t.With(s.require(permActivityRead)).Get("/activity", s.listActivity)
+				if s.comp != nil {
+					s.mountCompliance(t)
+				}
 				for _, m := range s.modules {
 					m(t)
 				}

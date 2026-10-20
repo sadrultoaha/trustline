@@ -7,7 +7,18 @@ import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage'
 import { SignupPage } from '@/features/auth/SignupPage'
+import { ControlDetailPage } from '@/features/controls/ControlDetailPage'
+import { ControlsPage } from '@/features/controls/ControlsPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
+import { FrameworkDetailPage } from '@/features/frameworks/FrameworkDetailPage'
+import { FrameworksPage } from '@/features/frameworks/FrameworksPage'
+import { IntegrationDetailPage } from '@/features/integrations/IntegrationDetailPage'
+import { IntegrationsPage } from '@/features/integrations/IntegrationsPage'
+import { TaskDetailPage } from '@/features/tasks/TaskDetailPage'
+import { TasksPage } from '@/features/tasks/TasksPage'
+import { TestBuilderPage } from '@/features/tests/TestBuilderPage'
+import { TestDetailPage } from '@/features/tests/TestDetailPage'
+import { TestsPage } from '@/features/tests/TestsPage'
 import { InvitePage } from '@/features/invite/InvitePage'
 import { OnboardingPage } from '@/features/onboarding/OnboardingPage'
 import { ActivityPage } from '@/features/settings/ActivityPage'
@@ -104,6 +115,18 @@ const appRoute = createRoute({
 
 const dashboardRoute = createRoute({ getParentRoute: () => appRoute, path: '/', component: DashboardPage })
 
+const frameworksRoute = createRoute({ getParentRoute: () => appRoute, path: 'frameworks', component: FrameworksPage })
+const frameworkRoute = createRoute({ getParentRoute: () => appRoute, path: 'frameworks/$id', component: FrameworkDetailPage })
+const controlsRoute = createRoute({ getParentRoute: () => appRoute, path: 'controls', component: ControlsPage })
+const controlRoute = createRoute({ getParentRoute: () => appRoute, path: 'controls/$id', component: ControlDetailPage })
+const integrationsRoute = createRoute({ getParentRoute: () => appRoute, path: 'integrations', component: IntegrationsPage })
+const integrationRoute = createRoute({ getParentRoute: () => appRoute, path: 'integrations/$id', component: IntegrationDetailPage })
+const testsRoute = createRoute({ getParentRoute: () => appRoute, path: 'tests', component: TestsPage })
+const testNewRoute = createRoute({ getParentRoute: () => appRoute, path: 'tests/new', component: TestBuilderPage })
+const testRoute = createRoute({ getParentRoute: () => appRoute, path: 'tests/$id', component: TestDetailPage })
+const tasksRoute = createRoute({ getParentRoute: () => appRoute, path: 'tasks', component: TasksPage })
+const taskRoute = createRoute({ getParentRoute: () => appRoute, path: 'tasks/$id', component: TaskDetailPage })
+
 const settingsRoute = createRoute({ getParentRoute: () => appRoute, path: 'settings', component: SettingsLayout })
 const settingsIndexRoute = createRoute({
   getParentRoute: () => settingsRoute,
@@ -127,6 +150,17 @@ const routeTree = rootRoute.addChildren([
   onboardingRoute,
   appRoute.addChildren([
     dashboardRoute,
+    frameworksRoute,
+    frameworkRoute,
+    controlsRoute,
+    controlRoute,
+    integrationsRoute,
+    integrationRoute,
+    testsRoute,
+    testNewRoute,
+    testRoute,
+    tasksRoute,
+    taskRoute,
     settingsRoute.addChildren([settingsIndexRoute, settingsOrgRoute, settingsMembersRoute, settingsActivityRoute, settingsProfileRoute]),
   ]),
 ])

@@ -1,0 +1,272 @@
+id: hipaa
+name: HIPAA Security Rule
+version: "45 CFR Part 164 Subpart C (as amended 2013)"
+publisher: U.S. Department of Health and Human Services (HHS)
+description: >-
+  The HIPAA Security Rule sets national standards for protecting electronic protected health
+  information (ePHI) created, received, maintained or transmitted by covered entities and their
+  business associates. It requires administrative, physical and technical safeguards, each made up
+  of standards and implementation specifications that are either required or addressable, plus
+  organizational, policy and documentation requirements.
+sections:
+  - 164.308 Administrative Safeguards
+  - 164.310 Physical Safeguards
+  - 164.312 Technical Safeguards
+  - 164.314 Organizational Requirements
+  - 164.316 Policies, Procedures and Documentation
+requirements:
+  # ---------------- 164.308 Administrative Safeguards ----------------
+  - code: "164.308(a)(1)(ii)(A)"
+    section: 164.308 Administrative Safeguards
+    title: Risk analysis (Required)
+    description: Conduct an accurate and thorough assessment of potential risks and vulnerabilities to the confidentiality, integrity and availability of ePHI held by the organization.
+    controls: [RSK-01]
+  - code: "164.308(a)(1)(ii)(B)"
+    section: 164.308 Administrative Safeguards
+    title: Risk management (Required)
+    description: Implement security measures sufficient to reduce identified risks and vulnerabilities to a reasonable and appropriate level.
+    controls: [RSK-02]
+  - code: "164.308(a)(1)(ii)(C)"
+    section: 164.308 Administrative Safeguards
+    title: Sanction policy (Required)
+    description: Apply appropriate sanctions against workforce members who fail to comply with the organization's security policies and procedures.
+    controls: [HR-06]
+  - code: "164.308(a)(1)(ii)(D)"
+    section: 164.308 Administrative Safeguards
+    title: Information system activity review (Required)
+    description: Regularly review records of information system activity such as audit logs, access reports and security incident tracking reports.
+    controls: [LOG-01, LOG-06, IAM-04]
+  - code: "164.308(a)(2)"
+    section: 164.308 Administrative Safeguards
+    title: Assigned security responsibility (Required)
+    description: Identify a security official responsible for developing and implementing the organization's security policies and procedures.
+    controls: [GOV-02]
+  - code: "164.308(a)(3)(ii)(A)"
+    section: 164.308 Administrative Safeguards
+    title: Authorization and/or supervision (Addressable)
+    description: Implement procedures to authorize or supervise workforce members who work with ePHI or in locations where it may be accessed.
+    controls: [IAM-03, IAM-05]
+  - code: "164.308(a)(3)(ii)(B)"
+    section: 164.308 Administrative Safeguards
+    title: Workforce clearance procedure (Addressable)
+    description: Implement procedures to determine that a workforce member's access to ePHI is appropriate, for example through background screening.
+    controls: [HR-01, IAM-03]
+  - code: "164.308(a)(3)(ii)(C)"
+    section: 164.308 Administrative Safeguards
+    title: Termination procedures (Addressable)
+    description: Implement procedures to end access to ePHI when a workforce member's employment ends or access is no longer appropriate.
+    controls: [HR-05]
+  - code: "164.308(a)(4)(ii)(A)"
+    section: 164.308 Administrative Safeguards
+    title: Isolating health care clearinghouse functions (Required)
+    description: A clearinghouse that is part of a larger organization must protect its ePHI from unauthorized access by the larger organization.
+    controls: [NET-03, IAM-12]
+  - code: "164.308(a)(4)(ii)(B)"
+    section: 164.308 Administrative Safeguards
+    title: Access authorization (Addressable)
+    description: Implement policies and procedures for granting access to ePHI, for example through access to a workstation, transaction, program or process.
+    controls: [IAM-03, IAM-12]
+  - code: "164.308(a)(4)(ii)(C)"
+    section: 164.308 Administrative Safeguards
+    title: Access establishment and modification (Addressable)
+    description: Implement policies and procedures to establish, document, review and modify a user's right of access to systems containing ePHI.
+    controls: [IAM-03, IAM-04]
+  - code: "164.308(a)(5)(ii)(A)"
+    section: 164.308 Administrative Safeguards
+    title: Security reminders (Addressable)
+    description: Provide periodic security updates and reminders to all workforce members as part of a security awareness and training program.
+    controls: [HR-02]
+  - code: "164.308(a)(5)(ii)(B)"
+    section: 164.308 Administrative Safeguards
+    title: Protection from malicious software (Addressable)
+    description: Implement procedures for guarding against, detecting and reporting malicious software.
+    controls: [AST-05, HR-02]
+  - code: "164.308(a)(5)(ii)(C)"
+    section: 164.308 Administrative Safeguards
+    title: Log-in monitoring (Addressable)
+    description: Implement procedures for monitoring log-in attempts and reporting discrepancies.
+    controls: [LOG-01, LOG-05]
+  - code: "164.308(a)(5)(ii)(D)"
+    section: 164.308 Administrative Safeguards
+    title: Password management (Addressable)
+    description: Implement procedures for creating, changing and safeguarding passwords.
+    controls: [IAM-06, IAM-09]
+  - code: "164.308(a)(6)(ii)"
+    section: 164.308 Administrative Safeguards
+    title: Security incident response and reporting (Required)
+    description: Identify and respond to suspected or known security incidents, mitigate harmful effects where practicable, and document incidents and their outcomes.
+    controls: [IR-01, IR-04]
+  - code: "164.308(a)(7)(ii)(A)"
+    section: 164.308 Administrative Safeguards
+    title: Data backup plan (Required)
+    description: Establish and implement procedures to create and maintain retrievable exact copies of ePHI.
+    controls: [DAT-03]
+  - code: "164.308(a)(7)(ii)(B)"
+    section: 164.308 Administrative Safeguards
+    title: Disaster recovery plan (Required)
+    description: Establish procedures to restore any loss of data following an emergency or disaster.
+    controls: [BCP-01, DAT-04]
+  - code: "164.308(a)(7)(ii)(C)"
+    section: 164.308 Administrative Safeguards
+    title: Emergency mode operation plan (Required)
+    description: Establish procedures that allow critical business processes protecting ePHI to continue while operating in emergency mode.
+    controls: [BCP-01, BCP-03]
+  - code: "164.308(a)(7)(ii)(D)"
+    section: 164.308 Administrative Safeguards
+    title: Testing and revision procedures (Addressable)
+    description: Periodically test contingency plans and revise them as needed.
+    controls: [BCP-02, DAT-04]
+  - code: "164.308(a)(7)(ii)(E)"
+    section: 164.308 Administrative Safeguards
+    title: Applications and data criticality analysis (Addressable)
+    description: Assess the relative criticality of specific applications and data in support of contingency planning.
+    controls: [RSK-04, AST-02]
+  - code: "164.308(a)(8)"
+    section: 164.308 Administrative Safeguards
+    title: Evaluation (Required)
+    description: Perform periodic technical and non-technical evaluations of how well security policies and procedures meet the rule, including after environmental or operational changes.
+    controls: [GOV-03, GOV-04, VUL-03]
+  - code: "164.308(b)(1)"
+    section: 164.308 Administrative Safeguards
+    title: Business associate contracts and other arrangements (Required)
+    description: Permit a business associate to handle ePHI only after obtaining satisfactory written assurances that it will appropriately safeguard the information.
+    controls: [VEN-03, VEN-02]
+  # ---------------- 164.310 Physical Safeguards ----------------
+  - code: "164.310(a)(2)(i)"
+    section: 164.310 Physical Safeguards
+    title: Contingency operations (Addressable)
+    description: Establish procedures allowing facility access in support of restoring lost data under the disaster recovery and emergency mode operations plans.
+    controls: [PHY-01, BCP-01]
+  - code: "164.310(a)(2)(ii)"
+    section: 164.310 Physical Safeguards
+    title: Facility security plan (Addressable)
+    description: Implement policies and procedures to safeguard the facility and its equipment from unauthorized physical access, tampering and theft.
+    controls: [PHY-01]
+  - code: "164.310(a)(2)(iii)"
+    section: 164.310 Physical Safeguards
+    title: Access control and validation procedures (Addressable)
+    description: Control and validate a person's access to facilities based on their role, including visitor control and access to software programs for testing and revision.
+    controls: [PHY-01]
+  - code: "164.310(a)(2)(iv)"
+    section: 164.310 Physical Safeguards
+    title: Maintenance records (Addressable)
+    description: Document repairs and modifications to the physical components of a facility that relate to security, such as hardware, walls, doors and locks.
+    controls: [PHY-01]
+  - code: "164.310(b)"
+    section: 164.310 Physical Safeguards
+    title: Workstation use (Required)
+    description: Specify the proper functions, manner of use and physical surroundings of workstations that can access ePHI.
+    controls: [AST-04, GOV-05]
+  - code: "164.310(c)"
+    section: 164.310 Physical Safeguards
+    title: Workstation security (Required)
+    description: Implement physical safeguards for all workstations that access ePHI to restrict access to authorized users.
+    controls: [AST-03, AST-04, PHY-01]
+  - code: "164.310(d)(2)(i)"
+    section: 164.310 Physical Safeguards
+    title: Disposal (Required)
+    description: Implement policies and procedures for the final disposition of ePHI and the hardware or electronic media on which it is stored.
+    controls: [AST-06]
+  - code: "164.310(d)(2)(ii)"
+    section: 164.310 Physical Safeguards
+    title: Media re-use (Required)
+    description: Remove ePHI from electronic media before the media are made available for re-use.
+    controls: [AST-06]
+  - code: "164.310(d)(2)(iii)"
+    section: 164.310 Physical Safeguards
+    title: Accountability (Addressable)
+    description: Maintain a record of the movements of hardware and electronic media and any person responsible for them.
+    controls: [AST-01]
+  - code: "164.310(d)(2)(iv)"
+    section: 164.310 Physical Safeguards
+    title: Data backup and storage (Addressable)
+    description: Create a retrievable, exact copy of ePHI, when needed, before equipment is moved.
+    controls: [DAT-03]
+  # ---------------- 164.312 Technical Safeguards ----------------
+  - code: "164.312(a)(2)(i)"
+    section: 164.312 Technical Safeguards
+    title: Unique user identification (Required)
+    description: Assign a unique name or number for identifying and tracking each user's identity.
+    controls: [IAM-02]
+  - code: "164.312(a)(2)(ii)"
+    section: 164.312 Technical Safeguards
+    title: Emergency access procedure (Required)
+    description: Establish procedures for obtaining necessary ePHI during an emergency.
+    controls: [IAM-08, BCP-01]
+  - code: "164.312(a)(2)(iii)"
+    section: 164.312 Technical Safeguards
+    title: Automatic logoff (Addressable)
+    description: Implement electronic procedures that terminate an electronic session after a predetermined period of inactivity.
+    controls: [IAM-11, AST-04]
+  - code: "164.312(a)(2)(iv)"
+    section: 164.312 Technical Safeguards
+    title: Encryption and decryption (Addressable)
+    description: Implement a mechanism to encrypt and decrypt ePHI at rest.
+    controls: [CRY-01, AST-03, CRY-03]
+  - code: "164.312(b)"
+    section: 164.312 Technical Safeguards
+    title: Audit controls (Required)
+    description: Implement hardware, software or procedural mechanisms that record and examine activity in information systems that contain or use ePHI.
+    controls: [LOG-01, LOG-03, LOG-04]
+  - code: "164.312(c)(2)"
+    section: 164.312 Technical Safeguards
+    title: Mechanism to authenticate ePHI (Addressable)
+    description: Implement electronic mechanisms to corroborate that ePHI has not been altered or destroyed in an unauthorized manner.
+    controls: [DAT-05, LOG-02]
+  - code: "164.312(d)"
+    section: 164.312 Technical Safeguards
+    title: Person or entity authentication (Required)
+    description: Implement procedures to verify that a person or entity seeking access to ePHI is the one claimed.
+    controls: [IAM-01, IAM-10]
+  - code: "164.312(e)(2)(i)"
+    section: 164.312 Technical Safeguards
+    title: Transmission integrity controls (Addressable)
+    description: Implement security measures to ensure electronically transmitted ePHI is not improperly modified without detection until disposed of.
+    controls: [CRY-02]
+  - code: "164.312(e)(2)(ii)"
+    section: 164.312 Technical Safeguards
+    title: Transmission encryption (Addressable)
+    description: Implement a mechanism to encrypt ePHI whenever deemed appropriate when it is transmitted over an electronic network.
+    controls: [CRY-02, NET-01]
+  # ---------------- 164.314 Organizational Requirements ----------------
+  - code: "164.314(a)(1)"
+    section: 164.314 Organizational Requirements
+    title: Business associate contracts or other arrangements (Required)
+    description: Contracts or other arrangements with business associates must meet the content requirements of the rule, and the covered entity must act on known material breaches by a business associate.
+    controls: [VEN-03]
+  - code: "164.314(a)(2)(i)"
+    section: 164.314 Organizational Requirements
+    title: Business associate contract terms (Required)
+    description: The contract must require the business associate to comply with the Security Rule, ensure its subcontractors agree to the same, and report security incidents including breaches of unsecured PHI.
+    controls: [VEN-03, IR-03]
+  - code: "164.314(b)(1)"
+    section: 164.314 Organizational Requirements
+    title: Requirements for group health plans (Required)
+    description: Group health plan documents must require the plan sponsor to reasonably and appropriately safeguard ePHI it creates, receives, maintains or transmits on behalf of the plan.
+    controls: [VEN-03, GOV-08]
+  # ---------------- 164.316 Policies, Procedures and Documentation ----------------
+  - code: "164.316(a)"
+    section: 164.316 Policies, Procedures and Documentation
+    title: Policies and procedures (Required)
+    description: Implement reasonable and appropriate policies and procedures to comply with the Security Rule, and change them as necessary.
+    controls: [GOV-01, GOV-04]
+  - code: "164.316(b)(1)"
+    section: 164.316 Policies, Procedures and Documentation
+    title: Documentation (Required)
+    description: Maintain policies and procedures, and records of required actions, activities or assessments, in written (which may be electronic) form.
+    controls: [GOV-01]
+  - code: "164.316(b)(2)(i)"
+    section: 164.316 Policies, Procedures and Documentation
+    title: Documentation time limit (Required)
+    description: Retain required documentation for six years from the date of its creation or the date it was last in effect, whichever is later.
+    controls: [DAT-02, GOV-04]
+  - code: "164.316(b)(2)(ii)"
+    section: 164.316 Policies, Procedures and Documentation
+    title: Documentation availability (Required)
+    description: Make documentation available to the persons responsible for implementing the procedures it covers.
+    controls: [GOV-05, GOV-01]
+  - code: "164.316(b)(2)(iii)"
+    section: 164.316 Policies, Procedures and Documentation
+    title: Documentation updates (Required)
+    description: Review documentation periodically and update it as needed in response to environmental or operational changes affecting ePHI security.
+    controls: [GOV-04]

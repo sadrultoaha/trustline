@@ -70,6 +70,12 @@ func TestLoginRateLimit(t *testing.T) {
 	if last != 429 {
 		t.Fatalf("expected 429 after repeated failures, got %d", last)
 	}
+	// Successful sign-ins do not count toward the per-email limit.
+	ok := testutil.Unique("okrl") + "@example.test"
+	app.Signup(t, ok, testutil.Unique("RL Co"))
+	for i := 0; i < 15; i++ {
+		c.Must(c.Post("/api/v1/auth/login", map[string]any{"email": ok, "password": "correct-horse-battery"}), 200)
+	}
 }
 
 func TestCrossTenantIsolation(t *testing.T) {

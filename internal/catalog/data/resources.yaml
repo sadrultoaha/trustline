@@ -1,0 +1,290 @@
+# Resource schemas per connector. Every snapshot a connector produces (real or
+# fake) conforms to these; test rules and the no-code test builder reference
+# these field paths. Types: string, number, bool, string[], object, object[], date.
+# Nested fields use dotted paths; arrays of objects use `name[*].field`.
+
+aws:
+  name: Amazon Web Services
+  category: Cloud
+  description: IAM, S3, CloudTrail, RDS, EC2, security groups, KMS and GuardDuty.
+  resources:
+    iam_user:
+      label: IAM user
+      fields:
+        id: {type: string, label: User name}
+        arn: {type: string, label: ARN}
+        console_access: {type: bool, label: Has console password}
+        mfa_enabled: {type: bool, label: MFA enabled}
+        last_login_days: {type: number, label: Days since last console login}
+        admin: {type: bool, label: Has AdministratorAccess attached directly}
+        is_service_account: {type: bool, label: Programmatic-only service user}
+        access_keys: {type: "object[]", label: Access keys}
+        access_keys[*].id: {type: string, label: Access key ID}
+        access_keys[*].active: {type: bool, label: Key active}
+        access_keys[*].age_days: {type: number, label: Key age (days)}
+        access_keys[*].last_used_days: {type: number, label: Days since key last used}
+    iam_account:
+      label: IAM account settings
+      fields:
+        id: {type: string, label: Account ID}
+        root_mfa_enabled: {type: bool, label: Root MFA enabled}
+        root_access_keys: {type: number, label: Root access keys count}
+        password_policy.min_length: {type: number, label: Password minimum length}
+        password_policy.require_symbols: {type: bool, label: Requires symbols}
+        password_policy.require_numbers: {type: bool, label: Requires numbers}
+        password_policy.require_uppercase: {type: bool, label: Requires uppercase}
+        password_policy.reuse_prevention: {type: number, label: Passwords remembered}
+        password_policy.max_age_days: {type: number, label: Max password age (days)}
+    s3_bucket:
+      label: S3 bucket
+      fields:
+        id: {type: string, label: Bucket name}
+        region: {type: string, label: Region}
+        public_access_block.block_public_acls: {type: bool, label: Block public ACLs}
+        public_access_block.ignore_public_acls: {type: bool, label: Ignore public ACLs}
+        public_access_block.block_public_policy: {type: bool, label: Block public policy}
+        public_access_block.restrict_public_buckets: {type: bool, label: Restrict public buckets}
+        public: {type: bool, label: Publicly accessible}
+        encryption.enabled: {type: bool, label: Default encryption enabled}
+        encryption.algorithm: {type: string, label: Encryption algorithm}
+        versioning: {type: bool, label: Versioning enabled}
+        logging_enabled: {type: bool, label: Server access logging enabled}
+        tags.data_classification: {type: string, label: Data classification tag}
+    cloudtrail_trail:
+      label: CloudTrail trail
+      fields:
+        id: {type: string, label: Trail name}
+        is_multi_region: {type: bool, label: Multi-region}
+        is_logging: {type: bool, label: Logging}
+        log_file_validation: {type: bool, label: Log file validation}
+        kms_encrypted: {type: bool, label: KMS encrypted}
+    rds_instance:
+      label: RDS instance
+      fields:
+        id: {type: string, label: Instance identifier}
+        engine: {type: string, label: Engine}
+        environment: {type: string, label: Environment tag}
+        storage_encrypted: {type: bool, label: Storage encrypted}
+        publicly_accessible: {type: bool, label: Publicly accessible}
+        backup_retention_days: {type: number, label: Backup retention (days)}
+        multi_az: {type: bool, label: Multi-AZ}
+        deletion_protection: {type: bool, label: Deletion protection}
+        auto_minor_version_upgrade: {type: bool, label: Auto minor version upgrade}
+        iam_auth_enabled: {type: bool, label: IAM database authentication}
+    ec2_instance:
+      label: EC2 instance
+      fields:
+        id: {type: string, label: Instance ID}
+        name: {type: string, label: Name tag}
+        imdsv2_required: {type: bool, label: IMDSv2 required}
+        public_ip: {type: bool, label: Has public IP}
+        ebs_encrypted: {type: bool, label: All volumes encrypted}
+        ssm_managed: {type: bool, label: Managed by SSM}
+    security_group:
+      label: Security group
+      fields:
+        id: {type: string, label: Group ID}
+        name: {type: string, label: Name}
+        open_ssh: {type: bool, label: SSH (22) open to 0.0.0.0/0}
+        open_rdp: {type: bool, label: RDP (3389) open to 0.0.0.0/0}
+        open_all: {type: bool, label: All ports open to 0.0.0.0/0}
+        ingress: {type: "object[]", label: Ingress rules}
+        ingress[*].from_port: {type: number, label: From port}
+        ingress[*].to_port: {type: number, label: To port}
+        ingress[*].cidr: {type: string, label: Source CIDR}
+    kms_key:
+      label: KMS key
+      fields:
+        id: {type: string, label: Key ID}
+        alias: {type: string, label: Alias}
+        customer_managed: {type: bool, label: Customer managed}
+        rotation_enabled: {type: bool, label: Automatic rotation}
+    guardduty_detector:
+      label: GuardDuty detector
+      fields:
+        id: {type: string, label: Region}
+        enabled: {type: bool, label: Enabled}
+        high_severity_findings: {type: number, label: Open high-severity findings}
+
+gcp:
+  name: Google Cloud Platform
+  category: Cloud
+  description: IAM bindings, service account keys, Cloud Storage, Cloud SQL and project settings.
+  resources:
+    iam_binding:
+      label: IAM binding
+      fields:
+        id: {type: string, label: Member and role}
+        member: {type: string, label: Member}
+        role: {type: string, label: Role}
+        primitive_role: {type: bool, label: Primitive role (owner/editor)}
+        external_member: {type: bool, label: Member outside the organization domain}
+        member_type: {type: string, label: "Member type (user, serviceAccount, group)"}
+    service_account_key:
+      label: Service account key
+      fields:
+        id: {type: string, label: Key ID}
+        service_account: {type: string, label: Service account}
+        user_managed: {type: bool, label: User-managed key}
+        age_days: {type: number, label: Key age (days)}
+    gcs_bucket:
+      label: Cloud Storage bucket
+      fields:
+        id: {type: string, label: Bucket name}
+        location: {type: string, label: Location}
+        public: {type: bool, label: Publicly accessible (allUsers/allAuthenticatedUsers)}
+        uniform_access: {type: bool, label: Uniform bucket-level access}
+        versioning: {type: bool, label: Versioning enabled}
+        cmek: {type: bool, label: Customer-managed encryption key}
+        logging_enabled: {type: bool, label: Access logging}
+    cloudsql_instance:
+      label: Cloud SQL instance
+      fields:
+        id: {type: string, label: Instance name}
+        database_version: {type: string, label: Database version}
+        public_ip: {type: bool, label: Has public IP}
+        authorized_networks_open: {type: bool, label: Authorized networks include 0.0.0.0/0}
+        ssl_required: {type: bool, label: SSL required}
+        backups_enabled: {type: bool, label: Automated backups}
+        point_in_time_recovery: {type: bool, label: Point-in-time recovery}
+        high_availability: {type: bool, label: Regional (HA)}
+    project:
+      label: Project
+      fields:
+        id: {type: string, label: Project ID}
+        audit_logging_all_services: {type: bool, label: Data access audit logs for all services}
+        os_login_enabled: {type: bool, label: OS Login enforced}
+        default_network_exists: {type: bool, label: Default network exists}
+        scc_enabled: {type: bool, label: Security Command Center enabled}
+
+github:
+  name: GitHub
+  category: Source control
+  description: Organization security settings, members, repositories, branch protection, Dependabot and scanning.
+  resources:
+    organization:
+      label: Organization
+      fields:
+        id: {type: string, label: Login}
+        two_factor_required: {type: bool, label: 2FA required for members}
+        default_repo_permission: {type: string, label: "Default repository permission (none, read, write, admin)"}
+        members_can_create_public_repos: {type: bool, label: Members can create public repositories}
+    member:
+      label: Member
+      fields:
+        id: {type: string, label: Login}
+        email: {type: string, label: Email}
+        role: {type: string, label: "Role (admin, member)"}
+        two_factor_enabled: {type: bool, label: 2FA enabled}
+        last_active_days: {type: number, label: Days since last activity}
+    repository:
+      label: Repository
+      fields:
+        id: {type: string, label: Full name}
+        private: {type: bool, label: Private}
+        archived: {type: bool, label: Archived}
+        production: {type: bool, label: Tagged as production code}
+        default_branch: {type: string, label: Default branch}
+        branch_protection.enabled: {type: bool, label: Default branch protected}
+        branch_protection.required_approving_reviews: {type: number, label: Required approving reviews}
+        branch_protection.dismiss_stale_reviews: {type: bool, label: Dismiss stale reviews}
+        branch_protection.require_code_owner_reviews: {type: bool, label: Require code owner reviews}
+        branch_protection.enforce_admins: {type: bool, label: Enforce for admins}
+        branch_protection.required_status_checks: {type: bool, label: Require status checks}
+        branch_protection.allow_force_pushes: {type: bool, label: Allows force pushes}
+        dependabot_alerts_enabled: {type: bool, label: Dependabot alerts enabled}
+        dependabot_open_critical: {type: number, label: Open critical Dependabot alerts}
+        dependabot_open_critical_overdue: {type: number, label: Critical alerts open longer than 30 days}
+        secret_scanning_enabled: {type: bool, label: Secret scanning enabled}
+        code_scanning_enabled: {type: bool, label: Code scanning enabled}
+        outside_collaborators: {type: number, label: Outside collaborators}
+
+okta:
+  name: Okta
+  category: Identity provider
+  description: Users, MFA enrolment, admin roles, password and session policies, and SSO applications.
+  resources:
+    user:
+      label: User
+      fields:
+        id: {type: string, label: Login}
+        email: {type: string, label: Email}
+        name: {type: string, label: Name}
+        status: {type: string, label: "Status (ACTIVE, SUSPENDED, DEPROVISIONED)"}
+        mfa_enrolled: {type: bool, label: MFA enrolled}
+        factors: {type: "string[]", label: Enrolled factors}
+        admin: {type: bool, label: Has admin role}
+        last_login_days: {type: number, label: Days since last login}
+        is_service_account: {type: bool, label: Service account}
+        groups: {type: "string[]", label: Groups}
+    policy:
+      label: Org policy
+      fields:
+        id: {type: string, label: Policy name}
+        password_min_length: {type: number, label: Password minimum length}
+        password_history: {type: number, label: Password history count}
+        mfa_required: {type: bool, label: MFA required for all sign-ins}
+        session_idle_timeout_minutes: {type: number, label: Session idle timeout (minutes)}
+        session_lifetime_hours: {type: number, label: Max session lifetime (hours)}
+    app:
+      label: Application
+      fields:
+        id: {type: string, label: App name}
+        sign_on_mode: {type: string, label: "Sign-on mode (SAML_2_0, OPENID_CONNECT, BOOKMARK, BASIC_AUTH)"}
+        critical: {type: bool, label: Business-critical}
+        assigned_users: {type: number, label: Assigned users}
+
+google_workspace:
+  name: Google Workspace
+  category: Identity provider
+  description: Users, 2-Step Verification, admin roles, security settings and third-party OAuth grants.
+  resources:
+    user:
+      label: User
+      fields:
+        id: {type: string, label: Primary email}
+        name: {type: string, label: Name}
+        suspended: {type: bool, label: Suspended}
+        is_admin: {type: bool, label: Super admin}
+        two_step_enrolled: {type: bool, label: 2SV enrolled}
+        last_login_days: {type: number, label: Days since last login}
+        org_unit: {type: string, label: Org unit}
+    domain:
+      label: Domain security settings
+      fields:
+        id: {type: string, label: Primary domain}
+        two_step_enforced: {type: bool, label: 2SV enforced}
+        password_min_length: {type: number, label: Password minimum length}
+        less_secure_apps_allowed: {type: bool, label: Less secure apps allowed}
+        external_sharing_default: {type: string, label: "Drive external sharing (off, allowlisted, on)"}
+        session_length_hours: {type: number, label: Web session length (hours)}
+    oauth_grant:
+      label: Third-party app grant
+      fields:
+        id: {type: string, label: Client ID}
+        app_name: {type: string, label: Application}
+        scopes: {type: "string[]", label: Scopes}
+        high_risk_scopes: {type: bool, label: Has high-risk scopes (Drive/Gmail full access)}
+        users: {type: number, label: Users who granted access}
+        verified: {type: bool, label: Publisher verified by Google}
+
+hris:
+  name: HRIS (BambooHR)
+  category: HR
+  description: Employee directory with status, department, manager and employment dates (BambooHR API, or CSV import).
+  resources:
+    employee:
+      label: Employee
+      fields:
+        id: {type: string, label: Employee ID}
+        email: {type: string, label: Work email}
+        name: {type: string, label: Name}
+        department: {type: string, label: Department}
+        title: {type: string, label: Job title}
+        manager_email: {type: string, label: Manager email}
+        status: {type: string, label: "Status (active, terminated, on_leave)"}
+        employment_type: {type: string, label: "Employment type (full_time, part_time, contractor)"}
+        hire_date: {type: date, label: Hire date}
+        termination_date: {type: date, label: Termination date}
+        location: {type: string, label: Location}
+        background_check: {type: string, label: "Background check (completed, pending, not_required)"}

@@ -1,0 +1,164 @@
+id: gdpr
+name: GDPR
+version: "Regulation (EU) 2016/679"
+publisher: European Parliament and Council of the European Union
+description: >-
+  The General Data Protection Regulation governs the processing of personal data of individuals in
+  the European Union. It sets out processing principles and lawful bases, grants data subjects
+  enforceable rights, places accountability, security, breach notification and governance duties
+  on controllers and processors, and restricts transfers of personal data outside the EEA.
+sections:
+  - Chapter II Principles
+  - Chapter III Rights of the Data Subject
+  - Chapter IV Controller and Processor
+  - Chapter V Transfers to Third Countries
+requirements:
+  # ---------------- Chapter II ----------------
+  - code: Art. 5
+    section: Chapter II Principles
+    title: Principles relating to processing of personal data
+    description: Process personal data lawfully, fairly and transparently, for specified purposes, limited to what is necessary, accurate, kept no longer than needed and with appropriate security, and be able to demonstrate compliance.
+    controls: [DAT-07, DAT-02, AST-02, GOV-08]
+  - code: Art. 6
+    section: Chapter II Principles
+    title: Lawfulness of processing
+    description: Processing is lawful only where at least one legal basis applies, such as consent, contract, legal obligation, vital interests, public task or legitimate interests.
+    controls: [DAT-07, GOV-08]
+  - code: Art. 7
+    section: Chapter II Principles
+    title: Conditions for consent
+    description: Where processing relies on consent, the controller must be able to demonstrate it was freely given, specific and distinguishable, and data subjects must be able to withdraw it as easily as they gave it.
+    controls: [DAT-06, DAT-07]
+  - code: Art. 9
+    section: Chapter II Principles
+    title: Processing of special categories of personal data
+    description: Processing of sensitive data such as health, biometric, genetic, racial or religious data is prohibited unless a specific exception applies, and such data needs heightened protection.
+    controls: [AST-02, DAT-08, DAT-07]
+  # ---------------- Chapter III ----------------
+  - code: Art. 12
+    section: Chapter III Rights of the Data Subject
+    title: Transparent information and modalities for exercising rights
+    description: Provide information and communications to data subjects in a concise, intelligible and accessible form, and respond to rights requests without undue delay and generally within one month, free of charge.
+    controls: [DAT-06]
+  - code: Art. 13
+    section: Chapter III Rights of the Data Subject
+    title: Information to be provided when data is collected from the data subject
+    description: At the time of collection, tell data subjects who the controller is, the purposes and legal basis, recipients, transfers, retention periods and their rights.
+    controls: [DAT-06]
+  - code: Art. 14
+    section: Chapter III Rights of the Data Subject
+    title: Information to be provided when data is not obtained from the data subject
+    description: When personal data is obtained from another source, provide the data subject with the required information, including the categories and source of the data, within a reasonable period.
+    controls: [DAT-06]
+  - code: Art. 15
+    section: Chapter III Rights of the Data Subject
+    title: Right of access by the data subject
+    description: Data subjects may obtain confirmation of whether their data is processed, a copy of it and details about the processing.
+    controls: [DAT-06, DAT-07]
+  - code: Art. 16
+    section: Chapter III Rights of the Data Subject
+    title: Right to rectification
+    description: Data subjects may have inaccurate personal data corrected and incomplete data completed without undue delay.
+    controls: [DAT-06]
+  - code: Art. 17
+    section: Chapter III Rights of the Data Subject
+    title: Right to erasure ("right to be forgotten")
+    description: Data subjects may have their personal data erased without undue delay where, for example, it is no longer needed, consent is withdrawn or processing was unlawful.
+    controls: [DAT-06, DAT-02]
+  - code: Art. 18
+    section: Chapter III Rights of the Data Subject
+    title: Right to restriction of processing
+    description: Data subjects may require processing to be restricted, for example while accuracy is contested or an objection is being assessed.
+    controls: [DAT-06]
+  - code: Art. 19
+    section: Chapter III Rights of the Data Subject
+    title: Notification regarding rectification, erasure or restriction
+    description: Communicate any rectification, erasure or restriction to each recipient to whom the data was disclosed, unless impossible or disproportionate.
+    controls: [DAT-06, VEN-04]
+  - code: Art. 20
+    section: Chapter III Rights of the Data Subject
+    title: Right to data portability
+    description: Data subjects may receive data they provided in a structured, commonly used, machine-readable format and have it transmitted to another controller where processing is automated and based on consent or contract.
+    controls: [DAT-06]
+  - code: Art. 21
+    section: Chapter III Rights of the Data Subject
+    title: Right to object
+    description: Data subjects may object to processing based on legitimate interests or public task, and always to processing for direct marketing.
+    controls: [DAT-06]
+  - code: Art. 22
+    section: Chapter III Rights of the Data Subject
+    title: Automated individual decision-making, including profiling
+    description: Data subjects have the right not to be subject to decisions based solely on automated processing that produce legal or similarly significant effects, subject to exceptions with safeguards such as human intervention.
+    controls: [DAT-06, AI-05, AI-07]
+  # ---------------- Chapter IV ----------------
+  - code: Art. 24
+    section: Chapter IV Controller and Processor
+    title: Responsibility of the controller
+    description: Implement appropriate technical and organisational measures, including data protection policies, to ensure and demonstrate compliance, reviewing and updating them as necessary.
+    controls: [GOV-01, GOV-02, GOV-04]
+  - code: Art. 25
+    section: Chapter IV Controller and Processor
+    title: Data protection by design and by default
+    description: Build data protection principles such as minimisation and pseudonymisation into systems from the design stage, and by default process only the personal data necessary for each purpose.
+    controls: [DEV-01, DAT-08, IAM-12, DAT-02]
+  - code: Art. 28
+    section: Chapter IV Controller and Processor
+    title: Processor
+    description: Use only processors that provide sufficient guarantees, bind them with a contract covering the required terms, and require prior authorisation for sub-processors.
+    controls: [VEN-03, VEN-02, VEN-04]
+  - code: Art. 30
+    section: Chapter IV Controller and Processor
+    title: Records of processing activities
+    description: Maintain a written record of processing activities, including purposes, categories of data and data subjects, recipients, transfers, retention periods and security measures.
+    controls: [DAT-07]
+  - code: Art. 32
+    section: Chapter IV Controller and Processor
+    title: Security of processing
+    description: Implement risk-appropriate security measures such as encryption, ongoing confidentiality, integrity, availability and resilience, timely restoration after incidents, and regular testing of their effectiveness.
+    controls: [CRY-01, CRY-02, IAM-01, IAM-12, DAT-03, DAT-04, BCP-01, RSK-01, VUL-03]
+  - code: Art. 33
+    section: Chapter IV Controller and Processor
+    title: Notification of a personal data breach to the supervisory authority
+    description: Notify the competent supervisory authority of a personal data breach without undue delay and where feasible within 72 hours, and document all breaches; processors must notify the controller.
+    controls: [IR-03, IR-01, IR-04]
+  - code: Art. 34
+    section: Chapter IV Controller and Processor
+    title: Communication of a personal data breach to the data subject
+    description: When a breach is likely to result in a high risk to individuals, inform the affected data subjects without undue delay in clear and plain language.
+    controls: [IR-03]
+  - code: Art. 35
+    section: Chapter IV Controller and Processor
+    title: Data protection impact assessment
+    description: Before processing likely to result in a high risk to individuals, assess the impact of the processing on the protection of personal data and identify mitigating measures.
+    controls: [DAT-08, RSK-01]
+  - code: Art. 37
+    section: Chapter IV Controller and Processor
+    title: Designation of the data protection officer
+    description: Designate a data protection officer where required, for example for large-scale monitoring or large-scale processing of special categories, and publish their contact details.
+    controls: [GOV-02]
+  - code: Art. 38
+    section: Chapter IV Controller and Processor
+    title: Position of the data protection officer
+    description: Involve the DPO properly and in a timely manner, provide resources, ensure independence and allow them to report to the highest management level.
+    controls: [GOV-02, GOV-03]
+  - code: Art. 39
+    section: Chapter IV Controller and Processor
+    title: Tasks of the data protection officer
+    description: The DPO informs and advises on obligations, monitors compliance including awareness training and audits, advises on DPIAs and cooperates with the supervisory authority.
+    controls: [GOV-02, HR-02, DAT-08]
+  # ---------------- Chapter V ----------------
+  - code: Art. 44
+    section: Chapter V Transfers to Third Countries
+    title: General principle for transfers
+    description: Transfer personal data outside the EEA only when the conditions of Chapter V are met, so that the level of protection is not undermined.
+    controls: [VEN-01, VEN-04, GOV-08]
+  - code: Art. 45
+    section: Chapter V Transfers to Third Countries
+    title: Transfers on the basis of an adequacy decision
+    description: Transfers may take place without further authorisation to countries the European Commission has found to ensure an adequate level of protection.
+    controls: [GOV-08, VEN-01]
+  - code: Art. 46
+    section: Chapter V Transfers to Third Countries
+    title: Transfers subject to appropriate safeguards
+    description: Without an adequacy decision, transfers require appropriate safeguards such as standard contractual clauses or binding corporate rules, with enforceable rights and effective remedies.
+    controls: [VEN-03, VEN-02]

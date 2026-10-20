@@ -13,7 +13,9 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/trustline/trustline/internal/app"
 	"github.com/trustline/trustline/internal/auth/oauth"
+	"github.com/trustline/trustline/internal/bootstrap"
 	"github.com/trustline/trustline/internal/config"
 	"github.com/trustline/trustline/internal/db"
 	"github.com/trustline/trustline/internal/httpapi"
@@ -95,10 +97,10 @@ func migrate(ctx context.Context, cfg *config.Config, log *slog.Logger) error {
 		return err
 	}
 	defer p.Close()
-	if err := db.Migrate(ctx, p, log); err != nil {
+	if err := bootstrap.Prepare(ctx, p, log); err != nil {
 		return err
 	}
-	log.Info("migrations applied")
+	log.Info("migrations applied and catalog synced")
 	return nil
 }
 
@@ -108,10 +110,10 @@ func runSeed(ctx context.Context, cfg *config.Config, log *slog.Logger) error {
 		return err
 	}
 	defer p.Close()
-	if err := db.Migrate(ctx, p, log); err != nil {
+	if err := bootstrap.Prepare(ctx, p, log); err != nil {
 		return err
 	}
-	res, err := seed.Run(ctx, p, log)
+	res, err := seed.Run(ctx, p, cfg, log)
 	if err != nil {
 		return err
 	}
@@ -155,7 +157,7 @@ func serve(ctx context.Context, cfg *config.Config, log *slog.Logger) error {
 	}
 	defer p.Close()
 	// The API process applies migrations on boot so `docker compose up` is enough.
-	if err := db.Migrate(ctx, p, log); err != nil {
+	if err := bootstrap.Prepare(ctx, p, log); err != nil {
 		return err
 	}
 	rdb := newRedis(cfg, log)
@@ -174,7 +176,11 @@ func serve(ctx context.Context, cfg *config.Config, log *slog.Logger) error {
 	} else {
 		provider = oauth.NewFake(cfg.BaseURL, redirect)
 	}
-	srv := httpapi.New(httpapi.Deps{Config: cfg, Log: log, Pool: p, Redis: rdb, Jobs: jc, OAuth: provider, Limiter: limiter})
+	comp, err := app.NewCompliance(ctx, cfg, p, jc, log)
+	if err != nil {
+		return err
+	}
+	srv := httpapi.New(httpapi.Deps{Config: cfg, Log: log, Pool: p, Redis: rdb, Jobs: jc, OAuth: provider, Limiter: limiter, Compliance: comp})
 	hs := &http.Server{Addr: cfg.HTTPAddr, Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		<-ctx.Done()
@@ -195,7 +201,7 @@ func worker(ctx context.Context, cfg *config.Config, log *slog.Logger) error {
 		return err
 	}
 	defer p.Close()
-	if err := db.Migrate(ctx, p, log); err != nil {
+	if err := bootstrap.Prepare(ctx, p, log); err != nil {
 		return err
 	}
 	var sender mail.Sender
@@ -204,16 +210,16 @@ func worker(ctx context.Context, cfg *config.Config, log *slog.Logger) error {
 	} else {
 		sender = &mail.SMTP{Addr: cfg.SMTPAddr, From: cfg.MailFrom}
 	}
-	wc, err := jobs.NewWorker(p, jobs.Deps{Mail: sender, Log: log}, jobs.WorkerConfig{DefaultWorkers: cfg.WorkerQueueDefault})
+	w, err := app.NewWorker(ctx, cfg, p, sender, app.NewAIProvider(cfg), log)
 	if err != nil {
 		return err
 	}
-	if err := wc.River.Start(ctx); err != nil {
+	if err := w.Client.River.Start(ctx); err != nil {
 		return err
 	}
-	log.Info("worker started", "mail", cfg.MailMode, "smtp", cfg.SMTPAddr)
+	log.Info("worker started", "mail", cfg.MailMode, "smtp", cfg.SMTPAddr, "ai", w.AI.Provider.Name(), "blob", w.Comp.Blob.Name(), "scheduler_interval", cfg.SchedulerInterval)
 	<-ctx.Done()
 	sctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	return wc.River.Stop(sctx)
+	return w.Client.River.Stop(sctx)
 }

@@ -60,8 +60,10 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {
 	}
 }
 
-func decode(r *http.Request, v any) error {
-	r.Body = http.MaxBytesReader(nil, r.Body, 1<<20)
+func decode(r *http.Request, v any) error { return decodeLimit(r, v, 1<<20) }
+
+func decodeLimit(r *http.Request, v any, limit int64) error {
+	r.Body = http.MaxBytesReader(nil, r.Body, limit)
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {

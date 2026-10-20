@@ -65,3 +65,41 @@ tighter per-IP values locked out the E2E suite, which is what a real office woul
 ## 2026-10-20 — Migrations hold a Postgres advisory lock
 The API and worker both migrate on boot. Without a lock they raced on first start and one crashed.
 `db.Migrate` now takes `pg_advisory_lock` so concurrent callers serialise.
+
+## 2026-10-20 — Catalog tables are global (the only tables without org_id)
+Frameworks, requirements, the crosswalk, catalog controls and catalog tests are reference content
+shared by every tenant, shipped as YAML inside the binary and synced on boot. Request handlers
+never write them. Everything an org can change (its controls, tests, evidence, tasks) is copied
+into org-scoped tables, so the "every table has org_id" rule holds for all tenant data.
+
+## 2026-10-20 — Sandbox connectors in Phase 1; live API clients in Phase 6
+The build order puts real AWS/GitHub/Okta clients in Phase 6. Phase 1 ships the Connector
+interface, credential schemas (validated and encrypted exactly as live credentials will be) and a
+sandbox implementation per connector. Requesting `mode: live` returns a clear validation error
+instead of a stub. The sandbox is not a mock: it is a persistent simulated account whose state
+users and tests change through scenarios, which is what the acceptance flow needs.
+
+## 2026-10-20 — 95 controls, 120 tests, PCI subset of 55
+The spec asked for about 80 controls and 120 tests. Covering seven frameworks including NIST AI RMF
+and ISO 42001 without forcing unrelated requirements onto generic controls needed 8 AI-governance
+and 2 payments controls on top of the core set. The PCI DSS subset is 55 sub-requirements instead
+of about 40 so each of the 12 principal requirements has its most testable items.
+
+## 2026-10-20 — Readiness is requirement-based
+A requirement counts as met only when every control mapped to it passes. That is stricter than
+"percent of controls passing" (which is also shown), but it is what an auditor tests. New orgs see
+low SOC 2 percentages until manual-evidence controls are covered, which is accurate.
+
+## 2026-10-20 — One open remediation task per failing test
+Tasks are keyed `test:<id>` with a partial unique index on open tasks. A test failing on every
+sync does not create duplicates. The task closes itself when the test passes, and is dismissed if
+the test is disabled or its integration disconnected.
+
+## 2026-10-20 — AI model `claude-sonnet-4-6` by default, configurable
+The spec names claude-sonnet-4-6. `AI_MODEL` overrides it. Calls use structured outputs and
+adaptive thinking. The fake provider is the default (`AI_MODE=fake`) so the full flow runs offline.
+
+## 2026-10-20 — Sync jobs are unique per integration
+`SyncIntegration` uses River unique jobs keyed by args across available/pending/running/
+scheduled/retryable states, so a slow sync and a scheduler tick never stack up. A sandbox change
+made while a sync is running is picked up by the next tick.

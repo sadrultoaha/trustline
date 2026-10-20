@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"github.com/riverqueue/river/rivertype"
 	"github.com/trustline/trustline/internal/mail"
 )
 
@@ -123,4 +124,94 @@ func (c *Client) EnqueueTx(ctx context.Context, tx pgx.Tx, args river.JobArgs) e
 func (c *Client) Enqueue(ctx context.Context, args river.JobArgs) error {
 	_, err := c.River.Insert(ctx, args, nil)
 	return err
+}
+
+// --- Phase 1 job args -------------------------------------------------------
+// Every tenant job carries OrgID; workers scope all queries by it.
+
+// SchedulerTickArgs fans out a sync for every enabled integration.
+type SchedulerTickArgs struct{}
+
+func (SchedulerTickArgs) Kind() string { return "scheduler_tick" }
+func (SchedulerTickArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: QueueDefault, MaxAttempts: 1}
+}
+
+// SyncIntegrationArgs pulls a snapshot from one integration.
+type SyncIntegrationArgs struct {
+	OrgID         string `json:"org_id"`
+	IntegrationID string `json:"integration_id"`
+	Trigger       string `json:"trigger"` // scheduled | manual | connect
+}
+
+func (SyncIntegrationArgs) Kind() string { return "sync_integration" }
+func (SyncIntegrationArgs) InsertOpts() river.InsertOpts {
+	// One pending sync per integration; a tick never queues duplicates.
+	return river.InsertOpts{Queue: QueueSync, MaxAttempts: 3, UniqueOpts: river.UniqueOpts{ByArgs: true, ByState: []rivertype.JobState{rivertype.JobStateAvailable, rivertype.JobStatePending, rivertype.JobStateRunning, rivertype.JobStateScheduled, rivertype.JobStateRetryable}}}
+}
+
+// RunTestsArgs evaluates tests over a stored snapshot.
+type RunTestsArgs struct {
+	OrgID      string `json:"org_id"`
+	SnapshotID string `json:"snapshot_id"`
+	Trigger    string `json:"trigger"`
+}
+
+func (RunTestsArgs) Kind() string { return "run_tests" }
+func (RunTestsArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: QueueTests, MaxAttempts: 3}
+}
+
+// RescanOrgArgs re-runs tests on the latest snapshot of every integration
+// (after a framework is adopted or custom tests change).
+type RescanOrgArgs struct {
+	OrgID   string `json:"org_id"`
+	Trigger string `json:"trigger"`
+}
+
+func (RescanOrgArgs) Kind() string { return "rescan_org" }
+func (RescanOrgArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: QueueTests, MaxAttempts: 3}
+}
+
+// GenerateRemediationArgs asks the AI layer for fix steps and Terraform.
+type GenerateRemediationArgs struct {
+	OrgID  string `json:"org_id"`
+	TaskID string `json:"task_id"`
+}
+
+func (GenerateRemediationArgs) Kind() string { return "generate_remediation" }
+func (GenerateRemediationArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: QueueAI, MaxAttempts: 3}
+}
+
+// ValidateEvidenceArgs asks the AI layer whether evidence satisfies its control.
+type ValidateEvidenceArgs struct {
+	OrgID      string `json:"org_id"`
+	EvidenceID string `json:"evidence_id"`
+}
+
+func (ValidateEvidenceArgs) Kind() string { return "validate_evidence" }
+func (ValidateEvidenceArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: QueueAI, MaxAttempts: 3}
+}
+
+// SlackNotifyArgs posts a message to an org's Slack incoming webhook.
+type SlackNotifyArgs struct {
+	OrgID string `json:"org_id"`
+	Text  string `json:"text"`
+	Link  string `json:"link"`
+}
+
+func (SlackNotifyArgs) Kind() string { return "slack_notify" }
+func (SlackNotifyArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: QueueDefault, MaxAttempts: 5}
+}
+
+// ExpireEvidenceArgs re-evaluates controls whose evidence expired (daily).
+type ExpireEvidenceArgs struct{}
+
+func (ExpireEvidenceArgs) Kind() string { return "expire_evidence" }
+func (ExpireEvidenceArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: QueueDefault, MaxAttempts: 3}
 }

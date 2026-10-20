@@ -1,0 +1,21 @@
+ACME CORP — INFORMATION SECURITY POLICY
+Version 3.2 · Approved by: Ada Lovelace (CEO) · Approval date: 2026-02-03 · Next review: 2027-02-03
+
+1. Purpose
+This information security policy establishes the security program of Acme Corp (the ISMS) and the
+principles by which we protect the confidentiality, integrity and availability of customer data.
+
+2. Scope
+All employees, contractors, systems and data processed by Acme Corp.
+
+3. Roles and responsibilities
+The CEO owns the security program. Grace Hopper (Staff Engineer) is the designated security officer.
+
+4. Policy statements
+- Access is granted on least privilege and reviewed quarterly.
+- Multi-factor authentication is required for all workforce systems.
+- Production data is encrypted at rest and in transit.
+- Security incidents are handled according to the Incident Response Plan.
+
+5. Review
+This policy is reviewed at least annually and re-approved by management.

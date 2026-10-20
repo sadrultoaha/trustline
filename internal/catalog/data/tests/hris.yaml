@@ -1,0 +1,140 @@
+# Automated tests for the HRIS (BambooHR or CSV import). See ../README.md for the format.
+
+- id: hris.employees.manager_assigned
+  name: Active employees have a manager assigned
+  description: A reporting line is needed for access approvals, access reviews and accountability. The chief executive is exempt.
+  connector: hris
+  resource: employee
+  control: GOV-07
+  severity: medium
+  quantifier: all
+  where:
+    and:
+      - {field: status, op: in, value: [active, on_leave]}
+      - {field: title, op: nin, value: [CEO, Chief Executive Officer]}
+  assert:
+    and:
+      - {field: manager_email, op: exists}
+      - {field: manager_email, op: len_gt, value: 0}
+  remediation:
+    summary: Record a manager for every active employee in the HRIS.
+    steps:
+      - In BambooHR, open the employee > Job > Reports to, and set the manager.
+      - If using CSV import, fill the manager_email column and re-import.
+
+- id: hris.employees.department_assigned
+  name: Active employees have a department
+  description: Departments drive group-based access and make the organizational structure auditable.
+  connector: hris
+  resource: employee
+  control: GOV-07
+  severity: low
+  quantifier: all
+  where: {field: status, op: in, value: [active, on_leave]}
+  assert:
+    and:
+      - {field: department, op: exists}
+      - {field: department, op: len_gt, value: 0}
+  remediation:
+    summary: Assign a department to every active employee.
+    steps:
+      - In BambooHR, open the employee > Job > Department and set it.
+      - Keep department names aligned with IdP group rules.
+
+- id: hris.employees.job_title
+  name: Active employees have a job title
+  description: Job titles document roles and responsibilities and support role-based access decisions.
+  connector: hris
+  resource: employee
+  control: HR-07
+  severity: low
+  quantifier: all
+  where: {field: status, op: in, value: [active, on_leave]}
+  assert:
+    and:
+      - {field: title, op: exists}
+      - {field: title, op: len_gt, value: 0}
+  remediation:
+    summary: Record the job title for every active employee.
+    steps:
+      - In BambooHR, open the employee > Job > Job Information and set Job Title.
+
+- id: hris.employees.work_email
+  name: Active employees have a valid work email
+  description: The work email links the HR record to identity accounts so joiners, movers and leavers can be reconciled.
+  connector: hris
+  resource: employee
+  control: HR-07
+  severity: medium
+  quantifier: all
+  where: {field: status, op: in, value: [active, on_leave]}
+  assert: {field: email, op: matches, value: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"}
+  remediation:
+    summary: Record the employee's company email address in the HRIS.
+    steps:
+      - In BambooHR, open the employee > Personal > Contact and set Work Email.
+      - Make sure it matches the primary login in the identity provider.
+
+- id: hris.employees.hire_date
+  name: Active employees have a hire date
+  description: The hire date evidences when onboarding controls (training, agreements, background checks) became due.
+  connector: hris
+  resource: employee
+  control: HR-07
+  severity: low
+  quantifier: all
+  where: {field: status, op: in, value: [active, on_leave]}
+  assert: {field: hire_date, op: exists}
+  remediation:
+    summary: Record the hire date for every active employee.
+    steps:
+      - In BambooHR, open the employee > Job > Hire Date and set it.
+
+- id: hris.employees.employment_type
+  name: Active employees have a recognised employment type
+  description: Employment type determines which onboarding and access controls apply, e.g. for contractors.
+  connector: hris
+  resource: employee
+  control: HR-07
+  severity: low
+  quantifier: all
+  where: {field: status, op: in, value: [active, on_leave]}
+  assert: {field: employment_type, op: in, value: [full_time, part_time, contractor]}
+  remediation:
+    summary: Set employment type to full_time, part_time or contractor for every active employee.
+    steps:
+      - In BambooHR, open the employee > Job > Employment Status and choose the correct value.
+      - Map custom statuses to the three standard types in the connector settings or CSV.
+
+- id: hris.employees.background_check
+  name: Active employees have a completed background check
+  description: Background screening before granting access to systems and data is required by most frameworks, subject to local law.
+  connector: hris
+  resource: employee
+  control: HR-01
+  severity: high
+  quantifier: all
+  where: {field: status, op: in, value: [active, on_leave]}
+  assert: {field: background_check, op: in, value: [completed, not_required]}
+  remediation:
+    summary: Complete pending background checks, or record a documented exemption as not_required.
+    steps:
+      - Follow up with the screening provider for every pending check.
+      - Record the outcome in the employee's background_check field in BambooHR.
+      - Where local law prohibits screening, record not_required with the justification.
+
+- id: hris.employees.termination_date
+  name: Terminated employees have a termination date
+  description: A termination date is needed to evidence that access was removed within the required timeframe.
+  connector: hris
+  resource: employee
+  control: HR-05
+  severity: medium
+  quantifier: all
+  where: {field: status, op: eq, value: terminated}
+  assert: {field: termination_date, op: exists}
+  remediation:
+    summary: Record the termination date for every terminated employee.
+    steps:
+      - In BambooHR, open the employee > Job > Employment Status, add a Terminated entry with its effective date.
+      - Reconcile against the IdP deprovisioning date to evidence timely access removal.

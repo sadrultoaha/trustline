@@ -1,0 +1,282 @@
+# Automated tests for Google Cloud Platform. See ../README.md for the format.
+
+# ---------------------------------------------------------------- IAM
+
+- id: gcp.iam.no_primitive_roles_users
+  name: Users are not granted primitive Owner or Editor roles
+  description: Primitive roles grant broad access across all services in a project; users should receive predefined or custom roles scoped to their job.
+  connector: gcp
+  resource: iam_binding
+  control: IAM-12
+  severity: high
+  quantifier: all
+  where: {field: member_type, op: eq, value: user}
+  assert: {field: primitive_role, op: eq, value: false}
+  remediation:
+    summary: Replace Owner/Editor bindings for users with least-privilege predefined roles.
+    steps:
+      - Review IAM recommender suggestions in IAM & Admin > IAM for each binding.
+      - Grant the specific predefined roles needed, e.g. `gcloud projects add-iam-policy-binding <project> --member user:<email> --role roles/compute.viewer`.
+      - Remove the primitive role with `gcloud projects remove-iam-policy-binding <project> --member user:<email> --role roles/editor`.
+    iac_hint: terraform:google_project_iam_member
+
+- id: gcp.iam.no_primitive_roles_service_accounts
+  name: Service accounts are not granted primitive Owner or Editor roles
+  description: The default Compute and App Engine service accounts receive Editor by default; a compromised workload then controls the whole project.
+  connector: gcp
+  resource: iam_binding
+  control: IAM-12
+  severity: high
+  quantifier: all
+  where: {field: member_type, op: eq, value: serviceAccount}
+  assert: {field: primitive_role, op: eq, value: false}
+  remediation:
+    summary: Remove primitive roles from service accounts and grant workload-specific roles.
+    steps:
+      - Remove Editor from default service accounts with `gcloud projects remove-iam-policy-binding <project> --member serviceAccount:<sa> --role roles/editor`.
+      - Enforce the `iam.automaticIamGrantsForDefaultServiceAccounts` organization policy constraint.
+      - Create dedicated service accounts per workload with only required roles.
+    iac_hint: terraform:google_project_iam_member
+
+- id: gcp.iam.no_external_members
+  name: IAM bindings do not include members outside the organization
+  description: External identities are not governed by the organization's joiner/mover/leaver process and may retain access indefinitely.
+  connector: gcp
+  resource: iam_binding
+  control: IAM-12
+  severity: high
+  quantifier: none
+  assert: {field: external_member, op: eq, value: true}
+  remediation:
+    summary: Remove external members and enforce domain-restricted sharing.
+    steps:
+      - Remove each external binding with `gcloud projects remove-iam-policy-binding`.
+      - Enforce the `iam.allowedPolicyMemberDomains` organization policy constraint with your customer ID.
+      - Provision required third parties through your own identity provider instead.
+    iac_hint: terraform:google_org_policy_policy
+
+- id: gcp.iam.no_public_members
+  name: No IAM bindings grant access to allUsers or allAuthenticatedUsers
+  description: Bindings to allUsers or allAuthenticatedUsers make the resource accessible to anyone on the internet or any Google account.
+  connector: gcp
+  resource: iam_binding
+  control: DAT-01
+  severity: critical
+  quantifier: none
+  assert: {field: member, op: in, value: [allUsers, allAuthenticatedUsers]}
+  remediation:
+    summary: Remove public principals from IAM policies.
+    steps:
+      - Remove the binding with `gcloud projects remove-iam-policy-binding <project> --member allUsers --role <role>`.
+      - Enforce domain-restricted sharing (`iam.allowedPolicyMemberDomains`) to prevent recurrence.
+    iac_hint: terraform:google_project_iam_binding
+
+# ---------------------------------------------------------------- Service account keys
+
+- id: gcp.sa_keys.rotated
+  name: User-managed service account keys are no older than 90 days
+  description: Downloaded service account keys are long-lived credentials; rotation limits the exposure window if one leaks.
+  connector: gcp
+  resource: service_account_key
+  control: IAM-09
+  severity: medium
+  quantifier: all
+  where: {field: user_managed, op: eq, value: true}
+  assert: {field: age_days, op: lte, value: 90}
+  remediation:
+    summary: Rotate user-managed keys older than 90 days, or replace them with Workload Identity Federation.
+    steps:
+      - Create a new key with `gcloud iam service-accounts keys create key.json --iam-account <sa>` and deploy it.
+      - Delete the old key with `gcloud iam service-accounts keys delete <key-id> --iam-account <sa>`.
+      - Enforce `iam.disableServiceAccountKeyCreation` and use Workload Identity Federation where possible.
+    iac_hint: terraform:google_service_account_key
+
+# ---------------------------------------------------------------- Cloud Storage
+
+- id: gcp.gcs.not_public
+  name: No Cloud Storage buckets are publicly accessible
+  description: Public buckets expose their objects to the internet and are a leading cause of cloud data leaks.
+  connector: gcp
+  resource: gcs_bucket
+  control: DAT-01
+  severity: critical
+  quantifier: none
+  assert: {field: public, op: eq, value: true}
+  remediation:
+    summary: Remove allUsers/allAuthenticatedUsers from the bucket and enforce public access prevention.
+    steps:
+      - Run `gcloud storage buckets remove-iam-policy-binding gs://<bucket> --member allUsers --role roles/storage.objectViewer`.
+      - Run `gcloud storage buckets update gs://<bucket> --public-access-prevention`.
+      - Enforce the `storage.publicAccessPrevention` organization policy constraint.
+    iac_hint: terraform:google_storage_bucket
+
+- id: gcp.gcs.uniform_access
+  name: Cloud Storage buckets use uniform bucket-level access
+  description: Uniform access disables object ACLs so that access is governed by IAM alone and cannot be granted per object by mistake.
+  connector: gcp
+  resource: gcs_bucket
+  control: DAT-01
+  severity: medium
+  quantifier: all
+  assert: {field: uniform_access, op: eq, value: true}
+  remediation:
+    summary: Enable uniform bucket-level access on every bucket.
+    steps:
+      - Run `gcloud storage buckets update gs://<bucket> --uniform-bucket-level-access`.
+      - Enforce the `storage.uniformBucketLevelAccess` organization policy constraint.
+    iac_hint: terraform:google_storage_bucket
+
+- id: gcp.gcs.versioning
+  name: Cloud Storage buckets have versioning enabled
+  description: Object versioning allows recovery of overwritten or deleted objects.
+  connector: gcp
+  resource: gcs_bucket
+  control: DAT-05
+  severity: medium
+  quantifier: all
+  assert: {field: versioning, op: eq, value: true}
+  remediation:
+    summary: Enable object versioning and a lifecycle rule for noncurrent versions.
+    steps:
+      - Run `gcloud storage buckets update gs://<bucket> --versioning`.
+      - Add a lifecycle rule limiting the number or age of noncurrent versions.
+    iac_hint: terraform:google_storage_bucket
+
+# ---------------------------------------------------------------- Cloud SQL
+
+- id: gcp.cloudsql.no_open_networks
+  name: Cloud SQL instances do not authorize 0.0.0.0/0
+  description: An authorized network of 0.0.0.0/0 exposes the database to connection attempts from the entire internet.
+  connector: gcp
+  resource: cloudsql_instance
+  control: NET-02
+  severity: critical
+  quantifier: all
+  assert: {field: authorized_networks_open, op: eq, value: false}
+  remediation:
+    summary: Remove 0.0.0.0/0 from authorized networks and connect via private IP or the Cloud SQL Auth Proxy.
+    steps:
+      - Run `gcloud sql instances patch <instance> --authorized-networks=<trusted-cidrs>` (or `--clear-authorized-networks`).
+      - Use the Cloud SQL Auth Proxy or private IP for application connectivity.
+      - Enforce the `sql.restrictAuthorizedNetworks` organization policy constraint.
+    iac_hint: terraform:google_sql_database_instance
+
+- id: gcp.cloudsql.no_public_ip
+  name: Cloud SQL instances do not have a public IP
+  description: Private IP connectivity keeps the database off the internet entirely.
+  connector: gcp
+  resource: cloudsql_instance
+  control: NET-02
+  severity: medium
+  quantifier: all
+  assert: {field: public_ip, op: eq, value: false}
+  remediation:
+    summary: Configure private IP and disable the public IP address.
+    steps:
+      - Set up private services access on the VPC.
+      - Run `gcloud sql instances patch <instance> --network=<vpc> --no-assign-ip`.
+      - Enforce the `sql.restrictPublicIp` organization policy constraint.
+    iac_hint: terraform:google_sql_database_instance
+
+- id: gcp.cloudsql.ssl_required
+  name: Cloud SQL instances require SSL connections
+  description: Requiring SSL/TLS prevents credentials and query data being transmitted in clear text.
+  connector: gcp
+  resource: cloudsql_instance
+  control: CRY-02
+  severity: high
+  quantifier: all
+  assert: {field: ssl_required, op: eq, value: true}
+  remediation:
+    summary: Require encrypted connections on every instance.
+    steps:
+      - Run `gcloud sql instances patch <instance> --ssl-mode=ENCRYPTED_ONLY`.
+      - Update clients to connect with TLS or through the Cloud SQL Auth Proxy.
+    iac_hint: terraform:google_sql_database_instance
+
+- id: gcp.cloudsql.backups_enabled
+  name: Cloud SQL instances have automated backups enabled
+  description: Automated backups are the foundation of database recovery after corruption, deletion or ransomware.
+  connector: gcp
+  resource: cloudsql_instance
+  control: DAT-03
+  severity: high
+  quantifier: all
+  assert:
+    and:
+      - {field: backups_enabled, op: eq, value: true}
+      - {field: point_in_time_recovery, op: eq, value: true}
+  remediation:
+    summary: Enable automated backups and point-in-time recovery.
+    steps:
+      - Run `gcloud sql instances patch <instance> --backup-start-time=02:00`.
+      - Enable PITR with `gcloud sql instances patch <instance> --enable-point-in-time-recovery` (MySQL uses `--enable-bin-log`).
+    iac_hint: terraform:google_sql_database_instance
+
+- id: gcp.cloudsql.high_availability
+  name: Cloud SQL instances are configured for high availability
+  description: Regional (HA) instances fail over automatically to a standby in another zone.
+  connector: gcp
+  resource: cloudsql_instance
+  control: BCP-03
+  severity: medium
+  quantifier: all
+  assert: {field: high_availability, op: eq, value: true}
+  remediation:
+    summary: Switch production instances to the REGIONAL availability type.
+    steps:
+      - Run `gcloud sql instances patch <instance> --availability-type=REGIONAL`.
+      - Test failover with `gcloud sql instances failover <instance>` in a maintenance window.
+    iac_hint: terraform:google_sql_database_instance
+
+# ---------------------------------------------------------------- Project
+
+- id: gcp.project.audit_logging
+  name: Projects have data access audit logs enabled for all services
+  description: Admin activity logs alone do not show who read or changed data; data access logs complete the audit trail.
+  connector: gcp
+  resource: project
+  control: LOG-01
+  severity: high
+  quantifier: all
+  assert: {field: audit_logging_all_services, op: eq, value: true}
+  remediation:
+    summary: Enable DATA_READ, DATA_WRITE and ADMIN_READ audit logs for allServices.
+    steps:
+      - In IAM & Admin > Audit Logs, select all services and enable Admin Read, Data Read and Data Write.
+      - Or add an `auditConfigs` entry for `allServices` to the project or organization IAM policy.
+    iac_hint: terraform:google_project_iam_audit_config
+
+- id: gcp.project.no_default_network
+  name: Projects do not contain the default network
+  description: The default network ships with permissive firewall rules (including SSH and RDP from anywhere) and auto-created subnets.
+  connector: gcp
+  resource: project
+  control: NET-03
+  severity: medium
+  quantifier: all
+  assert: {field: default_network_exists, op: eq, value: false}
+  remediation:
+    summary: Delete the default network and create purpose-built VPCs.
+    steps:
+      - Migrate any resources to a custom-mode VPC.
+      - Delete the default firewall rules and run `gcloud compute networks delete default`.
+      - Enforce the `compute.skipDefaultNetworkCreation` organization policy constraint.
+    iac_hint: terraform:google_compute_network
+
+- id: gcp.project.scc_enabled
+  name: Security Command Center is enabled
+  description: Security Command Center provides threat detection and misconfiguration findings across the project.
+  connector: gcp
+  resource: project
+  control: LOG-05
+  severity: medium
+  quantifier: all
+  assert: {field: scc_enabled, op: eq, value: true}
+  remediation:
+    summary: Activate Security Command Center for the organization or project.
+    steps:
+      - In Security > Security Command Center, choose the tier and activate it for the organization.
+      - Enable built-in services such as Security Health Analytics and Event Threat Detection.
+      - Route findings to the security team via Pub/Sub notifications.
+    iac_hint: terraform:google_scc_notification_config

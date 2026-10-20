@@ -1,0 +1,783 @@
+# Trustline control catalog. Controls are framework-neutral; frameworks map
+# their requirements onto these codes (see frameworks/*.yaml) — that mapping is
+# the crosswalk. `evidence`: automated = satisfied by tests, manual = needs
+# uploaded evidence, hybrid = tests where connected, otherwise evidence.
+# `keywords` help evidence validation decide whether a document is relevant.
+
+- code: GOV-01
+  name: Information security program
+  domain: Governance
+  description: A documented information security program, including an approved information security policy, is maintained and communicated to personnel.
+  evidence: manual
+  evidence_hint: Approved information security policy with version history and approver.
+  keywords: [information security policy, security program, isms]
+  evidence_ttl_days: 365
+- code: GOV-02
+  name: Security roles and responsibilities
+  domain: Governance
+  description: Security roles, including a designated security officer, are defined, assigned and documented.
+  evidence: manual
+  evidence_hint: Document naming the security officer and describing security responsibilities.
+  keywords: [security officer, roles, responsibilities, ciso, raci]
+  evidence_ttl_days: 365
+- code: GOV-03
+  name: Management oversight of security
+  domain: Governance
+  description: Leadership reviews the security program, risks and incidents at least annually and records decisions.
+  evidence: manual
+  evidence_hint: Minutes of a management or board meeting reviewing security.
+  keywords: [board, management review, minutes, oversight]
+  evidence_ttl_days: 365
+- code: GOV-04
+  name: Annual policy review
+  domain: Governance
+  description: Security policies are reviewed and re-approved at least annually.
+  evidence: manual
+  evidence_hint: Policy review log showing review dates and approvers.
+  keywords: [policy review, annual review, approval]
+  evidence_ttl_days: 365
+- code: GOV-05
+  name: Policy acknowledgement
+  domain: Governance
+  description: Personnel acknowledge the security policies on hire and when policies change.
+  evidence: manual
+  evidence_hint: Acknowledgement records per employee and policy version.
+  keywords: [acknowledgement, acceptance, signed policy]
+  evidence_ttl_days: 365
+- code: GOV-06
+  name: Code of conduct
+  domain: Governance
+  description: A code of conduct defines expected behaviour and is acknowledged by personnel.
+  evidence: manual
+  evidence_hint: Code of conduct document and acknowledgement records.
+  keywords: [code of conduct, ethics]
+  evidence_ttl_days: 365
+- code: GOV-07
+  name: Organizational structure maintained
+  domain: Governance
+  description: Reporting lines are documented; every active employee has a manager and department in the HR system.
+  evidence: hybrid
+  evidence_hint: Org chart export from the HR system.
+  keywords: [org chart, organizational structure, reporting lines]
+  evidence_ttl_days: 180
+- code: GOV-08
+  name: Legal and regulatory obligations register
+  domain: Governance
+  description: Applicable legal, regulatory and contractual security obligations are identified and tracked.
+  evidence: manual
+  evidence_hint: Register of applicable laws, regulations and contractual requirements.
+  keywords: [regulatory, legal requirements, obligations register]
+  evidence_ttl_days: 365
+
+- code: RSK-01
+  name: Annual risk assessment
+  domain: Risk Management
+  description: A formal risk assessment identifying threats, vulnerabilities, likelihood and impact is performed at least annually.
+  evidence: manual
+  evidence_hint: Risk assessment report with date and methodology.
+  keywords: [risk assessment, threat, likelihood, impact]
+  evidence_ttl_days: 365
+- code: RSK-02
+  name: Risk register and treatment
+  domain: Risk Management
+  description: Identified risks are recorded with owners, scores and treatment plans, and tracked to closure.
+  evidence: manual
+  evidence_hint: Risk register export showing owners and treatment plans.
+  keywords: [risk register, treatment plan, risk owner]
+  evidence_ttl_days: 180
+- code: RSK-03
+  name: Fraud risk assessment
+  domain: Risk Management
+  description: The risk assessment considers the potential for fraud, including incentives and opportunities.
+  evidence: manual
+  evidence_hint: Section of the risk assessment covering fraud.
+  keywords: [fraud]
+  evidence_ttl_days: 365
+- code: RSK-04
+  name: Business impact analysis
+  domain: Risk Management
+  description: Critical business processes and systems are identified with recovery time and recovery point objectives.
+  evidence: manual
+  evidence_hint: Business impact analysis listing RTO and RPO per system.
+  keywords: [business impact analysis, bia, rto, rpo]
+  evidence_ttl_days: 365
+
+- code: HR-01
+  name: Background checks
+  domain: People
+  description: Background checks are performed for new hires in accordance with local law.
+  evidence: manual
+  evidence_hint: Background check completion records (redacted).
+  keywords: [background check, screening]
+  evidence_ttl_days: 365
+- code: HR-02
+  name: Security awareness training
+  domain: People
+  description: Personnel complete security awareness training on hire and annually.
+  evidence: manual
+  evidence_hint: Training completion report per employee.
+  keywords: [security awareness, training, phishing]
+  evidence_ttl_days: 365
+- code: HR-03
+  name: Confidentiality agreements
+  domain: People
+  description: Employees and contractors sign agreements including confidentiality obligations.
+  evidence: manual
+  evidence_hint: Template employment agreement and signed NDA samples.
+  keywords: [confidentiality, nda, employment agreement]
+  evidence_ttl_days: 365
+- code: HR-04
+  name: Onboarding procedure
+  domain: People
+  description: A documented onboarding checklist covers policy acceptance, training, device setup and access requests.
+  evidence: manual
+  evidence_hint: Completed onboarding checklist for a recent hire.
+  keywords: [onboarding, checklist, new hire]
+  evidence_ttl_days: 365
+- code: HR-05
+  name: Timely access removal on termination
+  domain: People
+  description: Access to systems is removed within one business day of termination, verified against the HR system.
+  evidence: hybrid
+  evidence_hint: Offboarding ticket showing access revocation dates.
+  keywords: [offboarding, termination, access removal, deprovisioning]
+  evidence_ttl_days: 180
+- code: HR-06
+  name: Disciplinary process
+  domain: People
+  description: A disciplinary process exists for personnel who violate security policies.
+  evidence: manual
+  evidence_hint: HR policy describing sanctions for policy violations.
+  keywords: [disciplinary, sanctions]
+  evidence_ttl_days: 365
+- code: HR-07
+  name: Personnel records complete
+  domain: People
+  description: The HR system holds complete records for all workers including department, title, start date and work email.
+  evidence: hybrid
+  evidence_hint: HRIS export of active employees.
+  keywords: [hris, employee directory, personnel records]
+  evidence_ttl_days: 180
+
+- code: IAM-01
+  name: Multi-factor authentication enforced
+  domain: Identity & Access
+  description: MFA is required for workforce access to the identity provider, cloud consoles and source control.
+  evidence: automated
+  evidence_hint: IdP report showing MFA enrolment for all users.
+  keywords: [mfa, multi-factor, 2fa, two-factor, 2-step]
+  evidence_ttl_days: 90
+- code: IAM-02
+  name: Unique user accounts
+  domain: Identity & Access
+  description: Every person uses a unique, named account; shared and generic accounts are prohibited or tightly controlled.
+  evidence: automated
+  evidence_hint: User list showing named accounts only.
+  keywords: [unique account, shared account]
+  evidence_ttl_days: 180
+- code: IAM-03
+  name: Access provisioning approval
+  domain: Identity & Access
+  description: Access to production systems is requested and approved before being granted.
+  evidence: manual
+  evidence_hint: Sample of approved access request tickets.
+  keywords: [access request, approval, provisioning]
+  evidence_ttl_days: 180
+- code: IAM-04
+  name: Periodic access reviews
+  domain: Identity & Access
+  description: User access to critical systems is reviewed at least quarterly and inappropriate access is removed.
+  evidence: manual
+  evidence_hint: Completed access review with reviewer decisions.
+  keywords: [access review, user access review, recertification]
+  evidence_ttl_days: 90
+- code: IAM-05
+  name: Privileged access restricted
+  domain: Identity & Access
+  description: Administrative privileges are limited to personnel who need them and are not assigned directly to day-to-day accounts.
+  evidence: automated
+  evidence_hint: List of admin users per system.
+  keywords: [privileged access, admin, least privilege]
+  evidence_ttl_days: 90
+- code: IAM-06
+  name: Password policy enforced
+  domain: Identity & Access
+  description: Password policies enforce minimum length, complexity and reuse restrictions in all identity stores.
+  evidence: automated
+  evidence_hint: Password policy configuration screenshots.
+  keywords: [password policy, password length, complexity]
+  evidence_ttl_days: 180
+- code: IAM-07
+  name: Inactive accounts disabled
+  domain: Identity & Access
+  description: Accounts inactive for more than 90 days are disabled.
+  evidence: automated
+  evidence_hint: Report of last login per user.
+  keywords: [inactive, dormant account, last login]
+  evidence_ttl_days: 90
+- code: IAM-08
+  name: Root and break-glass accounts protected
+  domain: Identity & Access
+  description: Cloud root accounts have MFA, no access keys, and are used only for break-glass scenarios.
+  evidence: automated
+  evidence_hint: Root account security settings.
+  keywords: [root account, break-glass]
+  evidence_ttl_days: 90
+- code: IAM-09
+  name: Credential and key rotation
+  domain: Identity & Access
+  description: Long-lived API keys and service account keys are rotated at least every 90 days.
+  evidence: automated
+  evidence_hint: Key age report.
+  keywords: [key rotation, access key, service account key]
+  evidence_ttl_days: 90
+- code: IAM-10
+  name: Single sign-on for business applications
+  domain: Identity & Access
+  description: Business applications authenticate through the central identity provider.
+  evidence: automated
+  evidence_hint: IdP application list showing SSO configuration.
+  keywords: [sso, single sign-on, saml, oidc]
+  evidence_ttl_days: 180
+- code: IAM-11
+  name: Session timeout
+  domain: Identity & Access
+  description: Idle sessions in the identity provider and admin consoles expire within a defined period.
+  evidence: automated
+  evidence_hint: Session policy configuration.
+  keywords: [session timeout, idle timeout]
+  evidence_ttl_days: 180
+- code: IAM-12
+  name: Least privilege in cloud IAM
+  domain: Identity & Access
+  description: Cloud IAM avoids primitive owner/editor roles and grants no access to external identities.
+  evidence: automated
+  evidence_hint: Cloud IAM policy export.
+  keywords: [iam policy, least privilege, roles]
+  evidence_ttl_days: 90
+
+- code: AST-01
+  name: Asset inventory
+  domain: Asset Management
+  description: An inventory of cloud resources, devices and software is maintained and kept current through automated discovery.
+  evidence: automated
+  evidence_hint: Asset inventory export.
+  keywords: [asset inventory, cmdb]
+  evidence_ttl_days: 180
+- code: AST-02
+  name: Data classification
+  domain: Asset Management
+  description: Data is classified by sensitivity and handling requirements are defined per class.
+  evidence: manual
+  evidence_hint: Data classification policy.
+  keywords: [data classification, confidential, sensitivity]
+  evidence_ttl_days: 365
+- code: AST-03
+  name: Endpoint disk encryption
+  domain: Asset Management
+  description: Company laptops have full-disk encryption enabled.
+  evidence: hybrid
+  evidence_hint: MDM report of disk encryption status.
+  keywords: [disk encryption, filevault, bitlocker]
+  evidence_ttl_days: 90
+- code: AST-04
+  name: Endpoint screen lock
+  domain: Asset Management
+  description: Company devices lock automatically after at most 15 minutes of inactivity.
+  evidence: hybrid
+  evidence_hint: MDM screen lock policy.
+  keywords: [screen lock, auto-lock]
+  evidence_ttl_days: 90
+- code: AST-05
+  name: Endpoint anti-malware
+  domain: Asset Management
+  description: Company devices run up-to-date anti-malware protection.
+  evidence: hybrid
+  evidence_hint: EDR/AV console coverage report.
+  keywords: [antivirus, anti-malware, edr]
+  evidence_ttl_days: 90
+- code: AST-06
+  name: Secure media disposal
+  domain: Asset Management
+  description: Storage media and devices are wiped or destroyed securely before disposal or reuse.
+  evidence: manual
+  evidence_hint: Certificate of destruction or wipe log.
+  keywords: [disposal, destruction, wipe]
+  evidence_ttl_days: 365
+
+- code: CRY-01
+  name: Encryption at rest
+  domain: Cryptography
+  description: Production data stores, volumes and object storage are encrypted at rest.
+  evidence: automated
+  evidence_hint: Encryption settings for databases and storage.
+  keywords: [encryption at rest, kms, aes-256]
+  evidence_ttl_days: 90
+- code: CRY-02
+  name: Encryption in transit
+  domain: Cryptography
+  description: Data in transit over public networks and to databases uses TLS 1.2 or higher.
+  evidence: automated
+  evidence_hint: TLS configuration or database SSL enforcement settings.
+  keywords: [tls, encryption in transit, ssl, https]
+  evidence_ttl_days: 180
+- code: CRY-03
+  name: Cryptographic key management
+  domain: Cryptography
+  description: Encryption keys are managed in a KMS with automatic rotation enabled.
+  evidence: automated
+  evidence_hint: KMS key rotation settings.
+  keywords: [key management, kms, rotation]
+  evidence_ttl_days: 180
+
+- code: NET-01
+  name: Restricted inbound network access
+  domain: Network Security
+  description: Firewalls and security groups block administrative ports (SSH, RDP) from the internet.
+  evidence: automated
+  evidence_hint: Security group rules export.
+  keywords: [firewall, security group, ingress]
+  evidence_ttl_days: 90
+- code: NET-02
+  name: Databases not publicly accessible
+  domain: Network Security
+  description: Production databases are reachable only from private networks.
+  evidence: automated
+  evidence_hint: Database network configuration.
+  keywords: [publicly accessible, private subnet, database]
+  evidence_ttl_days: 90
+- code: NET-03
+  name: Network segmentation
+  domain: Network Security
+  description: Production, staging and corporate networks are segmented.
+  evidence: manual
+  evidence_hint: Network diagram showing segmentation.
+  keywords: [network diagram, segmentation, vpc]
+  evidence_ttl_days: 365
+- code: NET-04
+  name: Instance metadata protection
+  domain: Network Security
+  description: Compute instances require IMDSv2 and are managed for remote patching.
+  evidence: automated
+  evidence_hint: Instance metadata options.
+  keywords: [imdsv2, metadata]
+  evidence_ttl_days: 180
+
+- code: DAT-01
+  name: Storage not publicly accessible
+  domain: Data Protection
+  description: Object storage buckets block public access unless explicitly approved for public content.
+  evidence: automated
+  evidence_hint: Bucket public access settings.
+  keywords: [public access, bucket, s3, gcs]
+  evidence_ttl_days: 90
+- code: DAT-02
+  name: Data retention and disposal
+  domain: Data Protection
+  description: Retention periods are defined per data type and data is deleted when no longer needed.
+  evidence: manual
+  evidence_hint: Data retention schedule.
+  keywords: [retention, data deletion, disposal]
+  evidence_ttl_days: 365
+- code: DAT-03
+  name: Backups configured
+  domain: Data Protection
+  description: Production databases are backed up automatically with at least 7 days retention.
+  evidence: automated
+  evidence_hint: Backup configuration.
+  keywords: [backup, snapshot, retention]
+  evidence_ttl_days: 90
+- code: DAT-04
+  name: Backup restoration tested
+  domain: Data Protection
+  description: Restoring from backup is tested at least annually.
+  evidence: manual
+  evidence_hint: Restore test report with date and outcome.
+  keywords: [restore test, backup test]
+  evidence_ttl_days: 365
+- code: DAT-05
+  name: Protection against accidental deletion
+  domain: Data Protection
+  description: Object versioning and deletion protection are enabled for production data stores.
+  evidence: automated
+  evidence_hint: Versioning and deletion protection settings.
+  keywords: [versioning, deletion protection]
+  evidence_ttl_days: 180
+- code: DAT-06
+  name: Privacy notice and data subject rights
+  domain: Data Protection
+  description: A privacy notice is published and a process handles data subject requests within legal deadlines.
+  evidence: manual
+  evidence_hint: Privacy notice and DSAR procedure or log.
+  keywords: [privacy notice, data subject request, dsar, gdpr]
+  evidence_ttl_days: 365
+- code: DAT-07
+  name: Records of processing activities
+  domain: Data Protection
+  description: A record of processing activities lists purposes, categories of data and recipients.
+  evidence: manual
+  evidence_hint: Record of processing activities (ROPA).
+  keywords: [ropa, records of processing, article 30]
+  evidence_ttl_days: 365
+- code: DAT-08
+  name: Data protection impact assessments
+  domain: Data Protection
+  description: DPIAs are performed for processing likely to result in high risk to individuals.
+  evidence: manual
+  evidence_hint: Completed DPIA.
+  keywords: [dpia, impact assessment]
+  evidence_ttl_days: 365
+
+- code: LOG-01
+  name: Audit logging enabled
+  domain: Logging & Monitoring
+  description: Cloud control-plane audit logging is enabled in all regions and projects.
+  evidence: automated
+  evidence_hint: CloudTrail or Cloud Audit Logs configuration.
+  keywords: [audit log, cloudtrail, logging]
+  evidence_ttl_days: 90
+- code: LOG-02
+  name: Log integrity protection
+  domain: Logging & Monitoring
+  description: Audit logs are protected against tampering with integrity validation and encryption.
+  evidence: automated
+  evidence_hint: Log file validation settings.
+  keywords: [log integrity, log validation]
+  evidence_ttl_days: 180
+- code: LOG-03
+  name: Log retention
+  domain: Logging & Monitoring
+  description: Security logs are retained for at least one year.
+  evidence: manual
+  evidence_hint: Log retention configuration.
+  keywords: [log retention]
+  evidence_ttl_days: 365
+- code: LOG-04
+  name: Storage access logging
+  domain: Logging & Monitoring
+  description: Access to sensitive storage buckets is logged.
+  evidence: automated
+  evidence_hint: Bucket access logging settings.
+  keywords: [access logging, server access logs]
+  evidence_ttl_days: 180
+- code: LOG-05
+  name: Threat detection enabled
+  domain: Logging & Monitoring
+  description: A managed threat detection service monitors cloud accounts continuously.
+  evidence: automated
+  evidence_hint: GuardDuty or Security Command Center status.
+  keywords: [guardduty, threat detection, ids]
+  evidence_ttl_days: 90
+- code: LOG-06
+  name: Security alerts triaged
+  domain: Logging & Monitoring
+  description: High-severity security findings are triaged and resolved promptly.
+  evidence: automated
+  evidence_hint: Findings dashboard with no unresolved high-severity findings.
+  keywords: [findings, alerts, triage]
+  evidence_ttl_days: 30
+
+- code: VUL-01
+  name: Dependency vulnerability scanning
+  domain: Vulnerability Management
+  description: Automated dependency scanning is enabled for all active repositories.
+  evidence: automated
+  evidence_hint: Dependabot or SCA settings.
+  keywords: [dependabot, dependency scanning, sca]
+  evidence_ttl_days: 90
+- code: VUL-02
+  name: Critical vulnerabilities remediated
+  domain: Vulnerability Management
+  description: Critical vulnerabilities are remediated within 30 days.
+  evidence: automated
+  evidence_hint: Vulnerability report with no overdue critical findings.
+  keywords: [critical vulnerability, remediation sla, cve]
+  evidence_ttl_days: 30
+- code: VUL-03
+  name: Annual penetration test
+  domain: Vulnerability Management
+  description: An independent penetration test is performed at least annually and findings are tracked.
+  evidence: manual
+  evidence_hint: Penetration test report and remediation tracker.
+  keywords: [penetration test, pentest]
+  evidence_ttl_days: 365
+- code: VUL-04
+  name: Patch management
+  domain: Vulnerability Management
+  description: Operating systems and managed services receive security patches automatically or within defined SLAs.
+  evidence: automated
+  evidence_hint: Patch status or auto-upgrade settings.
+  keywords: [patching, patch management, updates]
+  evidence_ttl_days: 90
+- code: VUL-05
+  name: Secret scanning
+  domain: Vulnerability Management
+  description: Source repositories are scanned for committed secrets.
+  evidence: automated
+  evidence_hint: Secret scanning settings.
+  keywords: [secret scanning, credentials leak]
+  evidence_ttl_days: 180
+- code: VUL-06
+  name: Static code analysis
+  domain: Vulnerability Management
+  description: Static analysis security testing runs on production code repositories.
+  evidence: automated
+  evidence_hint: Code scanning configuration.
+  keywords: [sast, code scanning, static analysis]
+  evidence_ttl_days: 180
+
+- code: CHG-01
+  name: Peer review of code changes
+  domain: Change Management
+  description: Changes to production code require approval from at least one reviewer other than the author.
+  evidence: automated
+  evidence_hint: Branch protection settings requiring reviews.
+  keywords: [code review, pull request, peer review]
+  evidence_ttl_days: 90
+- code: CHG-02
+  name: Protected default branches
+  domain: Change Management
+  description: Default branches are protected against force pushes and admin bypass.
+  evidence: automated
+  evidence_hint: Branch protection settings.
+  keywords: [branch protection, force push]
+  evidence_ttl_days: 90
+- code: CHG-03
+  name: Automated checks before merge
+  domain: Change Management
+  description: CI status checks must pass before changes are merged.
+  evidence: automated
+  evidence_hint: Required status checks configuration.
+  keywords: [ci, status checks, tests]
+  evidence_ttl_days: 180
+- code: CHG-04
+  name: Separate environments
+  domain: Change Management
+  description: Development, staging and production environments are separated.
+  evidence: manual
+  evidence_hint: Architecture document showing separate accounts or projects.
+  keywords: [environments, staging, production separation]
+  evidence_ttl_days: 365
+- code: CHG-05
+  name: Change management procedure
+  domain: Change Management
+  description: A documented change management procedure covers testing, approval, rollback and emergency changes.
+  evidence: manual
+  evidence_hint: Change management policy.
+  keywords: [change management, change control]
+  evidence_ttl_days: 365
+- code: CHG-06
+  name: Stale approvals dismissed
+  domain: Change Management
+  description: Approvals are invalidated when new commits are pushed to a pull request.
+  evidence: automated
+  evidence_hint: Branch protection setting dismissing stale reviews.
+  keywords: [stale review, dismiss approvals]
+  evidence_ttl_days: 180
+
+- code: DEV-01
+  name: Secure development practices
+  domain: Secure Development
+  description: Engineers follow a secure development policy and receive secure coding training.
+  evidence: manual
+  evidence_hint: Secure SDLC policy and training records.
+  keywords: [secure development, sdlc, owasp]
+  evidence_ttl_days: 365
+- code: DEV-02
+  name: Code ownership defined
+  domain: Secure Development
+  description: Repositories define code owners who must review changes to their areas.
+  evidence: automated
+  evidence_hint: CODEOWNERS enforcement in branch protection.
+  keywords: [codeowners, code ownership]
+  evidence_ttl_days: 180
+- code: DEV-03
+  name: Source code confidentiality
+  domain: Secure Development
+  description: Proprietary source code repositories are private and outside collaborators are controlled.
+  evidence: automated
+  evidence_hint: Repository visibility settings.
+  keywords: [private repository, visibility]
+  evidence_ttl_days: 90
+
+- code: IR-01
+  name: Incident response plan
+  domain: Incident Response
+  description: A documented incident response plan defines roles, severity levels, communication and escalation.
+  evidence: manual
+  evidence_hint: Incident response plan.
+  keywords: [incident response plan, irp]
+  evidence_ttl_days: 365
+- code: IR-02
+  name: Incident response testing
+  domain: Incident Response
+  description: The incident response plan is exercised at least annually through a tabletop or live test.
+  evidence: manual
+  evidence_hint: Tabletop exercise report.
+  keywords: [tabletop, incident exercise]
+  evidence_ttl_days: 365
+- code: IR-03
+  name: Breach notification
+  domain: Incident Response
+  description: A procedure ensures regulators, customers and individuals are notified of breaches within legal deadlines.
+  evidence: manual
+  evidence_hint: Breach notification procedure.
+  keywords: [breach notification, 72 hours, notify]
+  evidence_ttl_days: 365
+- code: IR-04
+  name: Incident tracking
+  domain: Incident Response
+  description: Security incidents are logged, tracked to resolution and reviewed for lessons learned.
+  evidence: manual
+  evidence_hint: Incident log or tickets with post-mortems.
+  keywords: [incident log, post-mortem, postmortem]
+  evidence_ttl_days: 180
+
+- code: BCP-01
+  name: Business continuity and disaster recovery plan
+  domain: Business Continuity
+  description: A BC/DR plan defines recovery strategies, responsibilities and communication.
+  evidence: manual
+  evidence_hint: BC/DR plan.
+  keywords: [business continuity, disaster recovery, bcp, drp]
+  evidence_ttl_days: 365
+- code: BCP-02
+  name: Disaster recovery testing
+  domain: Business Continuity
+  description: Disaster recovery procedures are tested at least annually.
+  evidence: manual
+  evidence_hint: DR test report.
+  keywords: [dr test, failover test]
+  evidence_ttl_days: 365
+- code: BCP-03
+  name: High availability for production databases
+  domain: Business Continuity
+  description: Production databases are deployed across multiple availability zones.
+  evidence: automated
+  evidence_hint: Database HA configuration.
+  keywords: [multi-az, high availability, failover]
+  evidence_ttl_days: 180
+
+- code: VEN-01
+  name: Vendor inventory and tiering
+  domain: Vendor Management
+  description: Third-party vendors are inventoried and tiered by data access and criticality.
+  evidence: manual
+  evidence_hint: Vendor inventory with risk tiers.
+  keywords: [vendor inventory, third party, tier]
+  evidence_ttl_days: 180
+- code: VEN-02
+  name: Vendor security reviews
+  domain: Vendor Management
+  description: Vendors are assessed for security before onboarding and periodically based on tier.
+  evidence: manual
+  evidence_hint: Completed vendor assessments or SOC 2 report reviews.
+  keywords: [vendor review, vendor assessment, soc 2 report]
+  evidence_ttl_days: 365
+- code: VEN-03
+  name: Vendor agreements
+  domain: Vendor Management
+  description: Contracts with vendors handling sensitive data include security, confidentiality and data processing terms (DPA/BAA).
+  evidence: manual
+  evidence_hint: Signed DPA or BAA.
+  keywords: [dpa, baa, data processing agreement, business associate]
+  evidence_ttl_days: 365
+- code: VEN-04
+  name: Subprocessor list
+  domain: Vendor Management
+  description: A list of subprocessors is maintained and customers are notified of changes.
+  evidence: manual
+  evidence_hint: Published subprocessor list.
+  keywords: [subprocessor, sub-processor]
+  evidence_ttl_days: 365
+
+- code: PHY-01
+  name: Physical security
+  domain: Physical Security
+  description: Physical access to offices and data centers is restricted; data center controls are inherited from cloud providers and verified via their audit reports.
+  evidence: manual
+  evidence_hint: Cloud provider SOC 2 report and office access policy.
+  keywords: [physical security, badge, data center]
+  evidence_ttl_days: 365
+
+- code: AI-01
+  name: AI system inventory
+  domain: AI Governance
+  description: AI systems and models in use or development are inventoried with owners, purpose and risk classification.
+  evidence: manual
+  evidence_hint: AI system inventory.
+  keywords: [ai inventory, model inventory, ai system]
+  evidence_ttl_days: 180
+- code: AI-02
+  name: AI risk and impact assessment
+  domain: AI Governance
+  description: AI systems undergo risk and impact assessments covering safety, bias, privacy and societal impact before deployment.
+  evidence: manual
+  evidence_hint: AI impact assessment.
+  keywords: [ai impact assessment, ai risk, bias]
+  evidence_ttl_days: 365
+- code: AI-03
+  name: AI acceptable use policy
+  domain: AI Governance
+  description: An AI policy defines acceptable use of AI tools and responsibilities for AI development.
+  evidence: manual
+  evidence_hint: AI acceptable use policy.
+  keywords: [ai policy, acceptable use, generative ai]
+  evidence_ttl_days: 365
+- code: AI-04
+  name: AI performance monitoring
+  domain: AI Governance
+  description: Deployed AI models are monitored for performance, drift and errors against defined metrics.
+  evidence: manual
+  evidence_hint: Model monitoring dashboard or evaluation report.
+  keywords: [model monitoring, drift, evaluation]
+  evidence_ttl_days: 180
+- code: AI-05
+  name: Human oversight of AI
+  domain: AI Governance
+  description: Consequential AI-driven decisions have defined human review and override mechanisms.
+  evidence: manual
+  evidence_hint: Procedure describing human-in-the-loop review.
+  keywords: [human oversight, human in the loop, override]
+  evidence_ttl_days: 365
+- code: AI-06
+  name: AI data governance
+  domain: AI Governance
+  description: Training and evaluation data are documented for provenance, quality, consent and bias.
+  evidence: manual
+  evidence_hint: Dataset documentation (data cards).
+  keywords: [training data, data provenance, data card]
+  evidence_ttl_days: 365
+- code: AI-07
+  name: AI transparency
+  domain: AI Governance
+  description: Users are informed when they interact with AI and model documentation describes capabilities and limitations.
+  evidence: manual
+  evidence_hint: User-facing AI disclosure and model card.
+  keywords: [transparency, model card, disclosure]
+  evidence_ttl_days: 365
+- code: AI-08
+  name: AI incident and feedback handling
+  domain: AI Governance
+  description: Mechanisms capture feedback and incidents related to AI systems and feed them into remediation.
+  evidence: manual
+  evidence_hint: AI incident log or feedback process.
+  keywords: [ai incident, feedback]
+  evidence_ttl_days: 365
+
+- code: PAY-01
+  name: Cardholder data environment scoping
+  domain: Payments
+  description: The cardholder data environment is documented, minimized and segmented from other systems.
+  evidence: manual
+  evidence_hint: CDE scope document and data flow diagram.
+  keywords: [cardholder data, cde, pci scope]
+  evidence_ttl_days: 365
+- code: PAY-02
+  name: External vulnerability scans
+  domain: Payments
+  description: Quarterly external vulnerability scans are performed by an approved scanning vendor and pass.
+  evidence: manual
+  evidence_hint: Passing ASV scan reports.
+  keywords: [asv scan, external scan, quarterly scan]
+  evidence_ttl_days: 90

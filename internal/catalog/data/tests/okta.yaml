@@ -1,0 +1,287 @@
+# Automated tests for Okta. See ../README.md for the format.
+
+# ---------------------------------------------------------------- Users
+
+- id: okta.users.mfa_enrolled
+  name: Active Okta users are enrolled in MFA
+  description: Okta is the front door to every SSO application; each active human account must have a second factor.
+  connector: okta
+  resource: user
+  control: IAM-01
+  severity: high
+  quantifier: all
+  where:
+    and:
+      - {field: status, op: eq, value: ACTIVE}
+      - {field: is_service_account, op: eq, value: false}
+  assert: {field: mfa_enrolled, op: eq, value: true}
+  remediation:
+    summary: Require MFA enrolment for all users through an authenticator enrollment policy.
+    steps:
+      - In Admin Console > Security > Authenticators > Enrollment, set Okta Verify or FIDO2 to Required for Everyone.
+      - Contact users without factors, or reset their factors so they enrol at next sign-in.
+    iac_hint: terraform:okta_policy_mfa
+
+- id: okta.users.admins_mfa
+  name: Okta administrators are enrolled in MFA
+  description: Okta admins can change authentication for the entire organization; their accounts must be strongly protected.
+  connector: okta
+  resource: user
+  control: IAM-01
+  severity: critical
+  quantifier: all
+  where:
+    and:
+      - {field: status, op: eq, value: ACTIVE}
+      - {field: admin, op: eq, value: true}
+  assert:
+    and:
+      - {field: mfa_enrolled, op: eq, value: true}
+      - {field: factors, op: len_gt, value: 0}
+  remediation:
+    summary: Enrol every admin in phishing-resistant MFA and require it for the Admin Console.
+    steps:
+      - Have each admin enrol a FIDO2/WebAuthn key or Okta Verify with biometrics.
+      - In Security > Authentication Policies > Okta Admin Console, require phishing-resistant MFA.
+      - Remove admin roles from anyone who cannot enrol.
+    iac_hint: terraform:okta_policy_mfa
+
+- id: okta.users.inactive
+  name: Active Okta users have signed in within 90 days
+  description: Accounts that are never used should be suspended so they cannot be abused unnoticed.
+  connector: okta
+  resource: user
+  control: IAM-07
+  severity: medium
+  quantifier: all
+  where: {field: status, op: eq, value: ACTIVE}
+  assert: {field: last_login_days, op: lte, value: 90}
+  remediation:
+    summary: Suspend or deactivate users with no sign-in for more than 90 days.
+    steps:
+      - Run the Reports > Okta Password Health or a System Log query for last sign-in per user.
+      - Confirm with HR or the manager, then Suspend or Deactivate the user in Directory > People.
+      - Use Okta Workflows or Lifecycle Management to automate inactivity suspension.
+    iac_hint: terraform:okta_user
+
+- id: okta.users.admins_inactive
+  name: Okta administrators have signed in within 45 days
+  description: Unused admin accounts are high-value, low-visibility targets and should be removed promptly.
+  connector: okta
+  resource: user
+  control: IAM-07
+  severity: medium
+  quantifier: all
+  where:
+    and:
+      - {field: status, op: eq, value: ACTIVE}
+      - {field: admin, op: eq, value: true}
+  assert: {field: last_login_days, op: lte, value: 45}
+  remediation:
+    summary: Remove admin roles from administrators who have not signed in for 45 days.
+    steps:
+      - In Security > Administrators, review each admin's last sign-in.
+      - Revoke the role from inactive admins, keeping a documented break-glass account.
+    iac_hint: terraform:okta_user_admin_roles
+
+- id: okta.users.limited_admins
+  name: Okta has at most 3 active administrators
+  description: A small admin population reduces the blast radius of a compromised admin account.
+  connector: okta
+  resource: user
+  control: IAM-05
+  severity: medium
+  quantifier: count
+  max: 3
+  where: {field: status, op: eq, value: ACTIVE}
+  assert: {field: admin, op: eq, value: true}
+  remediation:
+    summary: Reduce the number of administrators and use scoped admin roles instead of Super Admin.
+    steps:
+      - In Security > Administrators, list all admin assignments.
+      - Replace Super Administrator with narrower roles (Help Desk, App Admin, Group Admin) where possible.
+      - Remove admin roles that are no longer needed.
+    iac_hint: terraform:okta_user_admin_roles
+
+- id: okta.users.service_accounts_not_admin
+  name: Okta service accounts do not hold admin roles
+  description: Service accounts are often used by integrations with stored credentials; admin rights let a leaked credential reconfigure the IdP.
+  connector: okta
+  resource: user
+  control: IAM-05
+  severity: high
+  quantifier: all
+  where: {field: is_service_account, op: eq, value: true}
+  assert: {field: admin, op: eq, value: false}
+  remediation:
+    summary: Remove admin roles from service accounts and use scoped OAuth API service apps instead.
+    steps:
+      - In Security > Administrators, remove roles assigned to service accounts.
+      - Replace API tokens with an API Services app using OAuth 2.0 scopes limited to what the integration needs.
+    iac_hint: terraform:okta_app_oauth_api_scope
+
+- id: okta.users.inactive_status_not_admin
+  name: Suspended and deprovisioned Okta users hold no admin roles
+  description: Admin roles left on inactive accounts are restored immediately if the account is reactivated.
+  connector: okta
+  resource: user
+  control: IAM-05
+  severity: medium
+  quantifier: all
+  where: {field: status, op: in, value: [SUSPENDED, DEPROVISIONED]}
+  assert: {field: admin, op: eq, value: false}
+  remediation:
+    summary: Remove admin role assignments from suspended and deprovisioned users.
+    steps:
+      - In Security > Administrators, filter for users not in Active status.
+      - Remove their admin role assignments.
+    iac_hint: terraform:okta_user_admin_roles
+
+- id: okta.users.group_membership
+  name: Active Okta users belong to at least one group
+  description: Group-based assignment is how access is provisioned and reviewed; users outside any group indicate ad-hoc access.
+  connector: okta
+  resource: user
+  control: IAM-03
+  severity: low
+  quantifier: all
+  where:
+    and:
+      - {field: status, op: eq, value: ACTIVE}
+      - {field: is_service_account, op: eq, value: false}
+  assert: {field: groups, op: len_gt, value: 0}
+  remediation:
+    summary: Assign every user to role-based groups, ideally driven by HRIS attributes.
+    steps:
+      - In Directory > Groups, create department or role groups with group rules based on profile attributes.
+      - Assign applications to groups rather than individual users.
+    iac_hint: terraform:okta_group_rule
+
+# ---------------------------------------------------------------- Policies
+
+- id: okta.policy.mfa_required
+  name: Okta sign-on policy requires MFA for all sign-ins
+  description: An org-wide MFA requirement ensures no user can authenticate with only a password.
+  connector: okta
+  resource: policy
+  control: IAM-01
+  severity: high
+  quantifier: all
+  assert: {field: mfa_required, op: eq, value: true}
+  remediation:
+    summary: Configure global session and authentication policies to require MFA for every sign-in.
+    steps:
+      - In Security > Global Session Policy, set the default rule to require multifactor authentication.
+      - In Security > Authentication Policies, require two factor types for every app policy.
+    iac_hint: terraform:okta_policy_rule_signon
+
+- id: okta.policy.password_min_length
+  name: Okta password policy requires at least 12 characters
+  description: Longer passwords resist guessing and credential stuffing.
+  connector: okta
+  resource: policy
+  control: IAM-06
+  severity: medium
+  quantifier: all
+  assert: {field: password_min_length, op: gte, value: 12}
+  remediation:
+    summary: Set the minimum password length to 12 or more.
+    steps:
+      - In Security > Authenticators > Password > Actions > Edit, set Minimum length to 12.
+    iac_hint: terraform:okta_policy_password
+
+- id: okta.policy.password_history
+  name: Okta password policy remembers at least 5 previous passwords
+  description: Password history prevents users from immediately reusing an old, possibly compromised password.
+  connector: okta
+  resource: policy
+  control: IAM-06
+  severity: low
+  quantifier: all
+  assert: {field: password_history, op: gte, value: 5}
+  remediation:
+    summary: Enforce a password history of at least 5.
+    steps:
+      - In Security > Authenticators > Password > policy > Edit, set Enforce password history for last 5 passwords.
+    iac_hint: terraform:okta_policy_password
+
+- id: okta.policy.session_idle_timeout
+  name: Okta sessions time out after 30 minutes or less of inactivity
+  description: Idle timeouts limit the risk of an unattended session being used by someone else.
+  connector: okta
+  resource: policy
+  control: IAM-11
+  severity: medium
+  quantifier: all
+  assert: {field: session_idle_timeout_minutes, op: lte, value: 30}
+  remediation:
+    summary: Set the global session idle timeout to 30 minutes or less.
+    steps:
+      - In Security > Global Session Policy > rule > Edit, set Maximum Okta global session idle time to 30 minutes.
+    iac_hint: terraform:okta_policy_rule_signon
+
+- id: okta.policy.session_lifetime
+  name: Okta sessions expire within 12 hours
+  description: A bounded session lifetime forces periodic re-authentication.
+  connector: okta
+  resource: policy
+  control: IAM-11
+  severity: low
+  quantifier: all
+  assert: {field: session_lifetime_hours, op: lte, value: 12}
+  remediation:
+    summary: Set the maximum global session lifetime to 12 hours or less.
+    steps:
+      - In Security > Global Session Policy > rule > Edit, set Maximum Okta global session lifetime to 12 hours.
+    iac_hint: terraform:okta_policy_rule_signon
+
+# ---------------------------------------------------------------- Applications
+
+- id: okta.apps.critical_federated
+  name: Business-critical applications use SAML or OIDC single sign-on
+  description: Federated SSO centralises authentication, MFA and deprovisioning for the applications that matter most.
+  connector: okta
+  resource: app
+  control: IAM-10
+  severity: high
+  quantifier: all
+  where: {field: critical, op: eq, value: true}
+  assert: {field: sign_on_mode, op: in, value: [SAML_2_0, OPENID_CONNECT]}
+  remediation:
+    summary: Reconfigure critical applications to use SAML 2.0 or OpenID Connect.
+    steps:
+      - In Applications > Browse App Catalog, add the vendor's SAML/OIDC integration.
+      - Configure the app's IdP settings with the Okta metadata and test with a pilot group.
+      - Disable local password login in the application once SSO works.
+    iac_hint: terraform:okta_app_saml
+
+- id: okta.apps.no_basic_auth
+  name: No Okta applications use basic authentication
+  description: Basic-auth apps share passwords with the application, bypassing federation and centralised MFA.
+  connector: okta
+  resource: app
+  control: IAM-10
+  severity: medium
+  quantifier: none
+  assert: {field: sign_on_mode, op: eq, value: BASIC_AUTH}
+  remediation:
+    summary: Migrate basic-auth applications to SAML or OIDC, or retire them.
+    steps:
+      - Check whether the vendor supports SAML or OIDC and add the federated integration.
+      - Reassign users to the new app and deactivate the basic-auth app in Applications.
+    iac_hint: terraform:okta_app_oauth
+
+- id: okta.apps.assigned
+  name: Okta applications have assigned users
+  description: Applications with no assignments are unused integrations that still hold trust relationships and should be removed.
+  connector: okta
+  resource: app
+  control: AST-01
+  severity: low
+  quantifier: all
+  assert: {field: assigned_users, op: gt, value: 0}
+  remediation:
+    summary: Deactivate and delete applications with no assigned users.
+    steps:
+      - In Applications, review apps with zero assignments with their business owner.
+      - Deactivate, then delete apps that are no longer used.

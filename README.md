@@ -27,6 +27,15 @@ Demo accounts (password `Trustline-demo-2026!`):
 
 Mailpit (all outgoing email): http://localhost:8025 · MinIO console: http://localhost:9001
 
+## Try continuous monitoring (2 minutes)
+
+1. Sign in as `ada@acme.test`. The dashboard shows SOC 2 and ISO 27001 readiness and the failing controls.
+2. Open **Integrations → AWS → Manage** and turn on **Make the marketing bucket public**.
+3. Open **Controls → DAT-01**. Within one scheduler tick (20 seconds in Docker) it turns red, the bell shows a notification, and a remediation task appears with step-by-step instructions and a Terraform fix.
+4. Turn the scenario off and click **Sync now**: the control recovers and the task closes itself.
+
+Set `AI_MODE=anthropic` and `ANTHROPIC_API_KEY` in `.env.docker` to use Claude instead of the deterministic fake.
+
 ## Local development (hot reload)
 
 ```bash

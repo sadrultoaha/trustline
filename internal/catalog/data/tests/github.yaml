@@ -1,0 +1,398 @@
+# Automated tests for GitHub. See ../README.md for the format.
+
+# ---------------------------------------------------------------- Organization
+
+- id: github.org.two_factor_required
+  name: Organization requires two-factor authentication
+  description: Requiring 2FA at the organization level removes members who have not enrolled, protecting source code from password-only compromise.
+  connector: github
+  resource: organization
+  control: IAM-01
+  severity: high
+  quantifier: all
+  assert: {field: two_factor_required, op: eq, value: true}
+  remediation:
+    summary: Turn on "Require two-factor authentication" for the organization.
+    steps:
+      - Notify members without 2FA, as they will be removed when the setting is enabled.
+      - In Organization > Settings > Authentication security, tick Require two-factor authentication.
+      - Prefer enforcing SSO via your IdP with its own MFA (GitHub Enterprise Cloud).
+
+- id: github.org.default_permission
+  name: Organization default repository permission is read or none
+  description: A write or admin base permission gives every member broad change rights to every repository.
+  connector: github
+  resource: organization
+  control: IAM-05
+  severity: medium
+  quantifier: all
+  assert: {field: default_repo_permission, op: in, value: [none, read]}
+  remediation:
+    summary: Lower the base permission to read (or none) and grant write access through teams.
+    steps:
+      - In Organization > Settings > Member privileges > Base permissions, select Read or No permission.
+      - Grant write/maintain access per repository through teams.
+    iac_hint: terraform:github_organization_settings
+
+- id: github.org.no_public_repo_creation
+  name: Members cannot create public repositories
+  description: Restricting public repository creation prevents proprietary code from being published by accident.
+  connector: github
+  resource: organization
+  control: DEV-03
+  severity: medium
+  quantifier: all
+  assert: {field: members_can_create_public_repos, op: eq, value: false}
+  remediation:
+    summary: Disallow members from creating public repositories.
+    steps:
+      - In Organization > Settings > Member privileges > Repository creation, untick Public.
+      - Route open-source publication through an approval process owned by admins.
+    iac_hint: terraform:github_organization_settings
+
+# ---------------------------------------------------------------- Members
+
+- id: github.members.two_factor_enabled
+  name: Organization members have 2FA enabled
+  description: Each member without 2FA is a path to the codebase protected only by a password.
+  connector: github
+  resource: member
+  control: IAM-01
+  severity: high
+  quantifier: all
+  assert: {field: two_factor_enabled, op: eq, value: true}
+  remediation:
+    summary: Ask members to enrol 2FA, then enforce it at the organization level.
+    steps:
+      - Filter People by 2FA disabled in Organization > People and contact each member.
+      - Members enrol under Settings > Password and authentication > Two-factor authentication.
+      - Enable "Require two-factor authentication" for the organization once everyone has enrolled.
+
+- id: github.members.admins_two_factor
+  name: Organization owners have 2FA enabled
+  description: Owners can change security settings, delete repositories and add members; they must use a second factor.
+  connector: github
+  resource: member
+  control: IAM-01
+  severity: critical
+  quantifier: all
+  where: {field: role, op: eq, value: admin}
+  assert: {field: two_factor_enabled, op: eq, value: true}
+  remediation:
+    summary: Require every owner to enrol 2FA (preferably a security key or passkey) immediately.
+    steps:
+      - Contact each owner without 2FA and have them enrol under Settings > Password and authentication.
+      - Demote owners who cannot enrol to member until they do.
+      - Enforce organization-wide 2FA.
+    iac_hint: terraform:github_membership
+
+- id: github.members.inactive
+  name: Organization members have been active within 90 days
+  description: Dormant memberships retain access to code and are often missed in offboarding.
+  connector: github
+  resource: member
+  control: IAM-07
+  severity: medium
+  quantifier: all
+  assert: {field: last_active_days, op: lte, value: 90}
+  remediation:
+    summary: Review members inactive for more than 90 days and remove those who no longer need access.
+    steps:
+      - Export the dormant users report (Enterprise > Compliance) or review member activity.
+      - Confirm with the member's manager whether access is still required.
+      - Remove with Organization > People > Remove from organization.
+    iac_hint: terraform:github_membership
+
+- id: github.members.limited_owners
+  name: The organization has at most 5 owners
+  description: Limiting owners reduces the number of accounts that can change org-wide security settings.
+  connector: github
+  resource: member
+  control: IAM-05
+  severity: medium
+  quantifier: count
+  max: 5
+  assert: {field: role, op: eq, value: admin}
+  remediation:
+    summary: Reduce owners to the minimum and delegate day-to-day tasks with team maintainers or custom roles.
+    steps:
+      - In Organization > People, filter by Owner and review each owner's need.
+      - Change unnecessary owners to Member via Change role.
+      - Use organization custom roles or security managers for delegated duties.
+    iac_hint: terraform:github_membership
+
+# ---------------------------------------------------------------- Repositories: change management
+
+- id: github.repo.branch_protection_enabled
+  name: Active repositories protect their default branch
+  description: Default branch protection is the technical enforcement point for code review and CI before changes reach production.
+  connector: github
+  resource: repository
+  control: CHG-02
+  severity: high
+  quantifier: all
+  where: {field: archived, op: eq, value: false}
+  assert: {field: branch_protection.enabled, op: eq, value: true}
+  remediation:
+    summary: Add a branch protection rule or ruleset on the default branch of every active repository.
+    steps:
+      - In Repository > Settings > Branches (or Rules > Rulesets), add a rule targeting the default branch.
+      - Consider an organization-wide ruleset targeting `~DEFAULT_BRANCH` for all repositories.
+    iac_hint: terraform:github_branch_protection
+
+- id: github.repo.required_reviews
+  name: Default branches require at least one approving review
+  description: Mandatory peer review ensures no single person can change production code unreviewed.
+  connector: github
+  resource: repository
+  control: CHG-01
+  severity: high
+  quantifier: all
+  where: {field: archived, op: eq, value: false}
+  assert: {field: branch_protection.required_approving_reviews, op: gte, value: 1}
+  remediation:
+    summary: Require at least one approving pull request review before merging into the default branch.
+    steps:
+      - In the default branch protection rule, enable Require a pull request before merging.
+      - Set Required approvals to 1 or more.
+    iac_hint: terraform:github_branch_protection
+
+- id: github.repo.production_two_reviews
+  name: Production repositories require two approving reviews
+  description: Code that ships to production warrants a stricter two-person review standard.
+  connector: github
+  resource: repository
+  control: CHG-01
+  severity: medium
+  quantifier: all
+  where:
+    and:
+      - {field: archived, op: eq, value: false}
+      - {field: production, op: eq, value: true}
+  assert: {field: branch_protection.required_approving_reviews, op: gte, value: 2}
+  remediation:
+    summary: Increase required approvals to 2 on production repositories.
+    steps:
+      - In the default branch protection rule, set Required approvals to 2.
+    iac_hint: terraform:github_branch_protection
+
+- id: github.repo.dismiss_stale_reviews
+  name: Default branches dismiss stale approvals on new commits
+  description: Without dismissal, code pushed after approval can be merged without being reviewed.
+  connector: github
+  resource: repository
+  control: CHG-06
+  severity: medium
+  quantifier: all
+  where: {field: archived, op: eq, value: false}
+  assert: {field: branch_protection.dismiss_stale_reviews, op: eq, value: true}
+  remediation:
+    summary: Enable dismissal of stale pull request approvals when new commits are pushed.
+    steps:
+      - In the default branch protection rule, tick Dismiss stale pull request approvals when new commits are pushed.
+    iac_hint: terraform:github_branch_protection
+
+- id: github.repo.production_code_owner_reviews
+  name: Production repositories require code owner review
+  description: Code owner review ensures that changes are approved by the people accountable for that code.
+  connector: github
+  resource: repository
+  control: DEV-02
+  severity: medium
+  quantifier: all
+  where:
+    and:
+      - {field: archived, op: eq, value: false}
+      - {field: production, op: eq, value: true}
+  assert: {field: branch_protection.require_code_owner_reviews, op: eq, value: true}
+  remediation:
+    summary: Add a CODEOWNERS file and require code owner review on the default branch.
+    steps:
+      - Create `.github/CODEOWNERS` mapping paths to responsible teams.
+      - In the default branch protection rule, tick Require review from Code Owners.
+    iac_hint: terraform:github_branch_protection
+
+- id: github.repo.production_enforce_admins
+  name: Production branch protection applies to administrators
+  description: If admins can bypass protection, review and CI controls are optional for the most privileged users.
+  connector: github
+  resource: repository
+  control: CHG-02
+  severity: medium
+  quantifier: all
+  where:
+    and:
+      - {field: archived, op: eq, value: false}
+      - {field: production, op: eq, value: true}
+  assert: {field: branch_protection.enforce_admins, op: eq, value: true}
+  remediation:
+    summary: Include administrators in branch protection on production repositories.
+    steps:
+      - In the default branch protection rule, tick Do not allow bypassing the above settings.
+      - Use a documented break-glass procedure for genuine emergencies.
+    iac_hint: terraform:github_branch_protection
+
+- id: github.repo.status_checks
+  name: Default branches require status checks to pass
+  description: Required CI checks ensure tests and security scans pass before code is merged.
+  connector: github
+  resource: repository
+  control: CHG-03
+  severity: medium
+  quantifier: all
+  where:
+    and:
+      - {field: archived, op: eq, value: false}
+      - {field: production, op: eq, value: true}
+  assert: {field: branch_protection.required_status_checks, op: eq, value: true}
+  remediation:
+    summary: Require CI status checks to pass before merging to the default branch.
+    steps:
+      - In the default branch protection rule, tick Require status checks to pass before merging.
+      - Select the build, test and security scan checks that must pass.
+    iac_hint: terraform:github_branch_protection
+
+- id: github.repo.no_force_push
+  name: Default branches do not allow force pushes
+  description: Force pushes can rewrite or erase reviewed history on the default branch.
+  connector: github
+  resource: repository
+  control: CHG-02
+  severity: high
+  quantifier: all
+  where: {field: archived, op: eq, value: false}
+  assert: {field: branch_protection.allow_force_pushes, op: eq, value: false}
+  remediation:
+    summary: Disallow force pushes on the default branch.
+    steps:
+      - In the default branch protection rule, make sure Allow force pushes is unticked.
+    iac_hint: terraform:github_branch_protection
+
+# ---------------------------------------------------------------- Repositories: security
+
+- id: github.repo.dependabot_alerts
+  name: Active repositories have Dependabot alerts enabled
+  description: Dependabot alerts notify the team of known vulnerabilities in third-party dependencies.
+  connector: github
+  resource: repository
+  control: VUL-01
+  severity: high
+  quantifier: all
+  where: {field: archived, op: eq, value: false}
+  assert: {field: dependabot_alerts_enabled, op: eq, value: true}
+  remediation:
+    summary: Enable Dependabot alerts on every active repository.
+    steps:
+      - In Organization > Settings > Code security, enable Dependabot alerts for all repositories and new repositories.
+      - Or per repository under Settings > Code security > Dependabot alerts.
+    iac_hint: terraform:github_repository_dependabot_security_updates
+
+- id: github.repo.no_overdue_critical
+  name: No critical Dependabot alerts are open longer than 30 days
+  description: Critical vulnerabilities must be remediated within the SLA defined by the vulnerability management policy.
+  connector: github
+  resource: repository
+  control: VUL-02
+  severity: high
+  quantifier: all
+  where: {field: archived, op: eq, value: false}
+  assert: {field: dependabot_open_critical_overdue, op: eq, value: 0}
+  remediation:
+    summary: Upgrade or patch affected dependencies and close overdue critical alerts.
+    steps:
+      - Review the repository Security > Dependabot tab filtered by severity:critical.
+      - Merge the Dependabot security update PR or upgrade the dependency manually.
+      - If not exploitable, dismiss with a documented reason and risk acceptance.
+
+- id: github.repo.production_no_open_critical
+  name: Production repositories have no open critical Dependabot alerts
+  description: Production code should not ship with known critical vulnerabilities in its dependencies.
+  connector: github
+  resource: repository
+  control: VUL-02
+  severity: high
+  quantifier: all
+  where:
+    and:
+      - {field: archived, op: eq, value: false}
+      - {field: production, op: eq, value: true}
+  assert: {field: dependabot_open_critical, op: eq, value: 0}
+  remediation:
+    summary: Remediate all critical dependency vulnerabilities in production repositories.
+    steps:
+      - Enable Dependabot security updates so fix PRs are raised automatically.
+      - Merge fix PRs and deploy, or document a risk acceptance for non-exploitable alerts.
+
+- id: github.repo.secret_scanning
+  name: Active repositories have secret scanning enabled
+  description: Secret scanning detects credentials committed to code before attackers can find them.
+  connector: github
+  resource: repository
+  control: VUL-05
+  severity: high
+  quantifier: all
+  where: {field: archived, op: eq, value: false}
+  assert: {field: secret_scanning_enabled, op: eq, value: true}
+  remediation:
+    summary: Enable secret scanning and push protection on all active repositories.
+    steps:
+      - In Organization > Settings > Code security, enable Secret scanning and Push protection for all repositories.
+      - Rotate any credentials already reported in Security > Secret scanning.
+    iac_hint: terraform:github_repository
+
+- id: github.repo.production_code_scanning
+  name: Production repositories have code scanning enabled
+  description: Static analysis catches common vulnerability classes in first-party code before release.
+  connector: github
+  resource: repository
+  control: VUL-06
+  severity: medium
+  quantifier: all
+  where:
+    and:
+      - {field: archived, op: eq, value: false}
+      - {field: production, op: eq, value: true}
+  assert: {field: code_scanning_enabled, op: eq, value: true}
+  remediation:
+    summary: Enable CodeQL (or another SAST tool) on production repositories.
+    steps:
+      - In Repository > Settings > Code security > Code scanning, choose Set up > Default for CodeQL.
+      - Or apply a code security configuration to all production repositories at the organization level.
+
+- id: github.repo.production_private
+  name: Production repositories are private
+  description: Production source code may reveal architecture, secrets and vulnerabilities and must not be public.
+  connector: github
+  resource: repository
+  control: DEV-03
+  severity: high
+  quantifier: all
+  where: {field: production, op: eq, value: true}
+  assert: {field: private, op: eq, value: true}
+  remediation:
+    summary: Change the visibility of production repositories to private.
+    steps:
+      - In Repository > Settings > General > Danger Zone, choose Change visibility > Make private.
+      - Review whether secrets were exposed while public and rotate them.
+    iac_hint: terraform:github_repository
+
+- id: github.repo.production_no_outside_collaborators
+  name: Production repositories have no outside collaborators
+  description: Outside collaborators are not managed by the organization's identity lifecycle and should not access production code.
+  connector: github
+  resource: repository
+  control: IAM-05
+  severity: medium
+  quantifier: all
+  where:
+    and:
+      - {field: archived, op: eq, value: false}
+      - {field: production, op: eq, value: true}
+  assert: {field: outside_collaborators, op: eq, value: 0}
+  remediation:
+    summary: Remove outside collaborators or convert them to managed organization members.
+    steps:
+      - In Repository > Settings > Collaborators and teams, review outside collaborators.
+      - Remove those without a current contract, or invite them as members through your IdP.
+      - Restrict "Allow repository administrators to invite outside collaborators" in organization member privileges.
+    iac_hint: terraform:github_repository_collaborator

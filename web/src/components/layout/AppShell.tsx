@@ -1,16 +1,22 @@
 import { Link, Outlet, useNavigate } from '@tanstack/react-router'
-import { Building2, Check, ChevronsUpDown, LayoutDashboard, LogOut, Plus, Settings, ShieldCheck, User } from 'lucide-react'
+import { Building2, Check, ChevronsUpDown, FlaskConical, Layers, LayoutDashboard, ListChecks, ListTodo, LogOut, Plug, Plus, Settings, ShieldCheck, User } from 'lucide-react'
 import { toast } from 'sonner'
-import { useLogout, useMe, useSwitchOrg } from '@/api/auth'
+import { useLogout, useMe, usePermissions, useSwitchOrg } from '@/api/auth'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { cn, initials } from '@/lib/utils'
+import { NotificationBell } from './NotificationBell'
 
 const nav = [
-  { to: '/app', label: 'Dashboard', icon: LayoutDashboard, exact: true, testid: 'nav-dashboard' },
-  { to: '/app/settings', label: 'Settings', icon: Settings, exact: false, testid: 'nav-settings' },
+  { to: '/app', label: 'Dashboard', icon: LayoutDashboard, exact: true, testid: 'nav-dashboard', perm: '' },
+  { to: '/app/frameworks', label: 'Frameworks', icon: Layers, exact: false, testid: 'nav-frameworks', perm: 'controls:read' },
+  { to: '/app/controls', label: 'Controls', icon: ListChecks, exact: false, testid: 'nav-controls', perm: 'controls:read' },
+  { to: '/app/tests', label: 'Tests', icon: FlaskConical, exact: false, testid: 'nav-tests', perm: 'tests:read' },
+  { to: '/app/integrations', label: 'Integrations', icon: Plug, exact: false, testid: 'nav-integrations', perm: 'integrations:read' },
+  { to: '/app/tasks', label: 'Tasks', icon: ListTodo, exact: false, testid: 'nav-tasks', perm: 'controls:read' },
+  { to: '/app/settings', label: 'Settings', icon: Settings, exact: false, testid: 'nav-settings', perm: '' },
 ] as const
 
 export function AppShell() {
@@ -18,6 +24,7 @@ export function AppShell() {
   const navigate = useNavigate()
   const logout = useLogout()
   const switchOrg = useSwitchOrg()
+  const { can } = usePermissions()
   if (!me || !me.org) return null
 
   return (
@@ -75,7 +82,7 @@ export function AppShell() {
           </DropdownMenu>
         </div>
         <nav className="flex-1 space-y-1 px-3">
-          {nav.map((item) => (
+          {nav.filter((item) => !item.perm || can(item.perm)).map((item) => (
             <Link
               key={item.to}
               to={item.to}
@@ -130,6 +137,9 @@ export function AppShell() {
             Sign out
           </Button>
         </header>
+        <div className="hidden h-14 items-center justify-end gap-2 border-b px-6 md:flex">
+          <NotificationBell />
+        </div>
         <main className="flex-1 p-6 md:p-8">
           <Outlet />
         </main>

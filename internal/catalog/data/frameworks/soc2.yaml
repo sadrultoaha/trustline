@@ -1,0 +1,349 @@
+id: soc2
+name: SOC 2
+version: "2017 Trust Services Criteria (revised points of focus 2022)"
+publisher: AICPA
+description: >-
+  The AICPA Trust Services Criteria used for SOC 2 examinations, covering the
+  Common Criteria (security) plus the Availability, Confidentiality, Processing
+  Integrity and Privacy categories. Titles and descriptions below are
+  paraphrased summaries, not the official criteria text.
+sections:
+  - CC1 Control Environment
+  - CC2 Communication and Information
+  - CC3 Risk Assessment
+  - CC4 Monitoring Activities
+  - CC5 Control Activities
+  - CC6 Logical and Physical Access Controls
+  - CC7 System Operations
+  - CC8 Change Management
+  - CC9 Risk Mitigation
+  - A1 Availability
+  - C1 Confidentiality
+  - PI1 Processing Integrity
+  - P1 Privacy - Notice
+  - P2 Privacy - Choice and Consent
+  - P3 Privacy - Collection
+  - P4 Privacy - Use, Retention and Disposal
+  - P5 Privacy - Access
+  - P6 Privacy - Disclosure and Notification
+  - P7 Privacy - Quality
+  - P8 Privacy - Monitoring and Enforcement
+requirements:
+  # CC1 Control Environment
+  - code: CC1.1
+    section: CC1 Control Environment
+    title: Commitment to integrity and ethical values
+    description: The organization shows it values integrity and ethics, sets expected standards of conduct, and addresses deviations from them.
+    controls: [GOV-06, GOV-05, HR-01, HR-06]
+  - code: CC1.2
+    section: CC1 Control Environment
+    title: Board independence and oversight
+    description: The board or equivalent governing body is independent of management and oversees the design and operation of internal controls.
+    controls: [GOV-03]
+  - code: CC1.3
+    section: CC1 Control Environment
+    title: Structures, reporting lines and authority
+    description: Management, under board oversight, sets up organizational structures, reporting lines and appropriate authorities and responsibilities to pursue objectives.
+    controls: [GOV-07, GOV-02]
+  - code: CC1.4
+    section: CC1 Control Environment
+    title: Commitment to competence
+    description: The organization attracts, develops and retains competent people aligned with its objectives, including vetting and training them.
+    controls: [HR-01, HR-02, HR-04, HR-07]
+  - code: CC1.5
+    section: CC1 Control Environment
+    title: Accountability for internal control
+    description: Individuals are held accountable for their internal control responsibilities in pursuit of objectives.
+    controls: [GOV-02, GOV-05, HR-06]
+  # CC2 Communication and Information
+  - code: CC2.1
+    section: CC2 Communication and Information
+    title: Relevant, quality information
+    description: The organization obtains or produces and uses relevant, quality information to support the functioning of internal control.
+    controls: [AST-01, LOG-01, VEN-01, AI-01]
+  - code: CC2.2
+    section: CC2 Communication and Information
+    title: Internal communication of control information
+    description: Objectives and responsibilities for internal control are communicated internally, including policies and channels for raising security concerns.
+    controls: [GOV-01, GOV-05, HR-02, HR-04]
+  - code: CC2.3
+    section: CC2 Communication and Information
+    title: External communication
+    description: The organization communicates with external parties such as customers, regulators and vendors about matters affecting internal control.
+    controls: [VEN-03, VEN-04, DAT-06, IR-03, AI-07]
+  # CC3 Risk Assessment
+  - code: CC3.1
+    section: CC3 Risk Assessment
+    title: Objectives specified to enable risk assessment
+    description: Objectives are defined clearly enough that risks to achieving them can be identified and assessed, including legal and regulatory obligations.
+    controls: [GOV-01, GOV-08, RSK-01]
+  - code: CC3.2
+    section: CC3 Risk Assessment
+    title: Risk identification and analysis
+    description: Risks to objectives are identified across the organization and analyzed to determine how they should be managed.
+    controls: [RSK-01, RSK-02, RSK-04, AI-02]
+  - code: CC3.3
+    section: CC3 Risk Assessment
+    title: Fraud risk considered
+    description: The potential for fraud is considered when assessing risks to the achievement of objectives.
+    controls: [RSK-03]
+  - code: CC3.4
+    section: CC3 Risk Assessment
+    title: Significant changes assessed
+    description: Changes that could significantly affect the system of internal control, internal or external, are identified and assessed.
+    controls: [RSK-01, RSK-02, VEN-02]
+  # CC4 Monitoring Activities
+  - code: CC4.1
+    section: CC4 Monitoring Activities
+    title: Ongoing and separate evaluations
+    description: The organization performs ongoing and periodic evaluations to confirm that internal control components are present and working.
+    controls: [GOV-03, VUL-03, IAM-04, VEN-02, AI-04]
+  - code: CC4.2
+    section: CC4 Monitoring Activities
+    title: Deficiencies communicated and corrected
+    description: Internal control deficiencies are evaluated and communicated in a timely way to those responsible for corrective action, including management and the board.
+    controls: [GOV-03, RSK-02, VUL-02]
+  # CC5 Control Activities
+  - code: CC5.1
+    section: CC5 Control Activities
+    title: Control activities selected to mitigate risk
+    description: Control activities are selected and developed to reduce risks to acceptable levels, including segregation of duties where appropriate.
+    controls: [RSK-02, IAM-05, CHG-01, CHG-04]
+  - code: CC5.2
+    section: CC5 Control Activities
+    title: General controls over technology
+    description: General technology controls are selected and developed to support achievement of objectives, covering infrastructure, security and acquisition, development and maintenance.
+    controls: [GOV-01, DEV-01, CHG-05, IAM-12]
+  - code: CC5.3
+    section: CC5 Control Activities
+    title: Controls deployed through policies and procedures
+    description: Control activities are put in place through policies stating expectations and procedures that put those policies into action, reviewed periodically.
+    controls: [GOV-01, GOV-04, GOV-05, AI-03]
+  # CC6 Logical and Physical Access Controls
+  - code: CC6.1
+    section: CC6 Logical and Physical Access Controls
+    title: Logical access security over protected assets
+    description: Logical access security software, infrastructure and architecture are implemented to protect information assets, including authentication, network restrictions and encryption key protection.
+    controls: [IAM-01, IAM-02, IAM-05, IAM-06, IAM-08, IAM-10, IAM-12, AST-01, AST-02, CRY-01, CRY-03, NET-01, NET-02, NET-03, DAT-01]
+  - code: CC6.2
+    section: CC6 Logical and Physical Access Controls
+    title: User registration and deregistration
+    description: New internal and external users are registered and authorized before credentials are issued, and access is removed when no longer needed.
+    controls: [IAM-02, IAM-03, HR-04, HR-05, IAM-07]
+  - code: CC6.3
+    section: CC6 Logical and Physical Access Controls
+    title: Role-based access authorized, modified and removed
+    description: Access to data and assets is authorized, changed or removed based on roles and least privilege, with periodic review and segregation of duties.
+    controls: [IAM-03, IAM-04, IAM-05, IAM-12, HR-05]
+  - code: CC6.4
+    section: CC6 Logical and Physical Access Controls
+    title: Physical access restricted
+    description: Physical access to facilities and protected information assets, such as data centers and backup media, is restricted to authorized personnel.
+    controls: [PHY-01]
+  - code: CC6.5
+    section: CC6 Logical and Physical Access Controls
+    title: Asset disposal protects data
+    description: Physical and logical protections over assets are discontinued only after the ability to read or recover data from them has been removed.
+    controls: [AST-06, DAT-02]
+  - code: CC6.6
+    section: CC6 Logical and Physical Access Controls
+    title: Protection against threats from outside the boundary
+    description: Logical access controls protect against threats from sources outside the system boundary, such as restricted network entry points, MFA for remote access and encrypted connections.
+    controls: [NET-01, NET-02, NET-03, NET-04, IAM-01, CRY-02, DAT-01, LOG-05]
+  - code: CC6.7
+    section: CC6 Logical and Physical Access Controls
+    title: Restricted transmission and movement of data
+    description: Transmission, movement and removal of information is limited to authorized users and processes and protected in transit and on removable media and endpoints.
+    controls: [CRY-02, AST-03, DAT-01, DEV-03, VUL-05]
+  - code: CC6.8
+    section: CC6 Logical and Physical Access Controls
+    title: Prevention and detection of malicious software
+    description: Controls prevent or detect and act on unauthorized or malicious software being introduced to the system.
+    controls: [AST-05, VUL-01, VUL-06, CHG-03, LOG-05]
+  # CC7 System Operations
+  - code: CC7.1
+    section: CC7 System Operations
+    title: Detection of configuration changes and vulnerabilities
+    description: Detection and monitoring procedures identify configuration changes that introduce vulnerabilities and susceptibilities to newly discovered vulnerabilities.
+    controls: [VUL-01, VUL-02, VUL-03, VUL-04, PAY-02, LOG-05]
+  - code: CC7.2
+    section: CC7 System Operations
+    title: Monitoring for anomalies and security events
+    description: System components are monitored for anomalies that may indicate malicious acts, natural disasters or errors, and those anomalies are analyzed.
+    controls: [LOG-01, LOG-02, LOG-03, LOG-04, LOG-05, LOG-06, AI-04]
+  - code: CC7.3
+    section: CC7 System Operations
+    title: Evaluation of security events
+    description: Security events are evaluated to determine whether they constitute incidents, and if so, actions are taken to prevent or address them.
+    controls: [LOG-06, IR-01, IR-04]
+  - code: CC7.4
+    section: CC7 System Operations
+    title: Incident response
+    description: Identified security incidents are responded to through a defined program to understand, contain, remediate and communicate them.
+    controls: [IR-01, IR-02, IR-03, IR-04, AI-08]
+  - code: CC7.5
+    section: CC7 System Operations
+    title: Recovery from incidents
+    description: Activities are identified, developed and carried out to recover from security incidents, including restoring operations and applying lessons learned.
+    controls: [IR-01, IR-04, BCP-01, DAT-04]
+  # CC8 Change Management
+  - code: CC8.1
+    section: CC8 Change Management
+    title: Change management
+    description: Changes to infrastructure, data, software and procedures are authorized, designed, developed, tested, approved and implemented in a controlled way.
+    controls: [CHG-01, CHG-02, CHG-03, CHG-04, CHG-05, CHG-06, DEV-01, DEV-02, VUL-06]
+  # CC9 Risk Mitigation
+  - code: CC9.1
+    section: CC9 Risk Mitigation
+    title: Mitigation of business disruption risk
+    description: Risk mitigation activities are identified and developed for risks arising from potential business disruptions, including continuity planning and insurance.
+    controls: [BCP-01, BCP-02, RSK-04, RSK-02]
+  - code: CC9.2
+    section: CC9 Risk Mitigation
+    title: Vendor and business partner risk
+    description: Risks associated with vendors and business partners are assessed and managed through due diligence, agreements and ongoing monitoring.
+    controls: [VEN-01, VEN-02, VEN-03, VEN-04]
+  # A1 Availability
+  - code: A1.1
+    section: A1 Availability
+    title: Capacity management
+    description: Current processing capacity and usage are maintained, monitored and evaluated so that demand can be managed and additional capacity provisioned when needed.
+    controls: [BCP-03, LOG-01]
+  - code: A1.2
+    section: A1 Availability
+    title: Environmental protections, backup and recovery infrastructure
+    description: Environmental protections, software, data backup processes and recovery infrastructure are authorized, designed, implemented, operated and monitored.
+    controls: [PHY-01, DAT-03, DAT-05, BCP-01, BCP-03]
+  - code: A1.3
+    section: A1 Availability
+    title: Recovery plan testing
+    description: Recovery plan procedures that support system recovery are tested periodically, including restoring from backups.
+    controls: [BCP-02, DAT-04]
+  # C1 Confidentiality
+  - code: C1.1
+    section: C1 Confidentiality
+    title: Confidential information identified and maintained
+    description: Confidential information is identified, classified and protected from unauthorized access during its retention period.
+    controls: [AST-02, CRY-01, DAT-01, HR-03, DEV-03]
+  - code: C1.2
+    section: C1 Confidentiality
+    title: Confidential information disposed
+    description: Confidential information is securely disposed of when it reaches the end of its retention period or is no longer needed.
+    controls: [DAT-02, AST-06]
+  # PI1 Processing Integrity
+  - code: PI1.1
+    section: PI1 Processing Integrity
+    title: Processing definitions and specifications
+    description: Relevant, quality information about processing objectives, including definitions of data and product or service specifications, is obtained or generated and used.
+    controls: [DEV-01, DAT-07, AI-06]
+  - code: PI1.2
+    section: PI1 Processing Integrity
+    title: Complete and accurate system inputs
+    description: Policies and procedures over system inputs make sure they are complete and accurate for the intended processing.
+    controls: [DEV-01, CHG-03, AI-06]
+  - code: PI1.3
+    section: PI1 Processing Integrity
+    title: Accurate and timely processing
+    description: Policies and procedures over processing make sure that results are produced accurately, completely and in a timely manner.
+    controls: [DEV-01, CHG-03, LOG-01, AI-04, AI-05]
+  - code: PI1.4
+    section: PI1 Processing Integrity
+    title: Complete, accurate and timely outputs
+    description: Policies and procedures make sure system outputs are complete, accurate, timely and delivered only to intended parties.
+    controls: [DEV-01, CRY-02, AI-04, AI-05]
+  - code: PI1.5
+    section: PI1 Processing Integrity
+    title: Stored inputs and outputs protected
+    description: Inputs, items in processing and outputs are stored completely, accurately and on time and are protected from loss or unauthorized change.
+    controls: [DAT-03, DAT-05, LOG-02, CRY-01]
+  # Privacy
+  - code: P1.1
+    section: P1 Privacy - Notice
+    title: Privacy notice
+    description: Data subjects are given timely, understandable notice about the organization's privacy practices, including updates when practices change.
+    controls: [DAT-06, AI-07]
+  - code: P2.1
+    section: P2 Privacy - Choice and Consent
+    title: Choice and consent
+    description: Choices available to data subjects about collection, use, retention, disclosure and disposal of their personal information are communicated, and consent is obtained and recorded where required.
+    controls: [DAT-06, DAT-07]
+  - code: P3.1
+    section: P3 Privacy - Collection
+    title: Collection limited to stated purposes
+    description: Personal information is collected only as needed for the purposes identified in the privacy notice, by fair and lawful means.
+    controls: [DAT-07, DAT-08, AI-06]
+  - code: P3.2
+    section: P3 Privacy - Collection
+    title: Explicit consent for sensitive data
+    description: Where explicit consent is required for collecting personal information, the need for it is communicated and consent is obtained and documented.
+    controls: [DAT-06, DAT-08]
+  - code: P4.1
+    section: P4 Privacy - Use, Retention and Disposal
+    title: Use limited to stated purposes
+    description: Personal information is used only for the purposes identified in the privacy notice.
+    controls: [DAT-07, DAT-08, AI-06]
+  - code: P4.2
+    section: P4 Privacy - Use, Retention and Disposal
+    title: Retention of personal information
+    description: Personal information is retained only as long as needed to meet stated objectives and obligations.
+    controls: [DAT-02]
+  - code: P4.3
+    section: P4 Privacy - Use, Retention and Disposal
+    title: Secure disposal of personal information
+    description: Personal information is securely disposed of when it is no longer needed.
+    controls: [DAT-02, AST-06]
+  - code: P5.1
+    section: P5 Privacy - Access
+    title: Data subject access
+    description: Authenticated data subjects can access and obtain a copy of their stored personal information, and denials are explained.
+    controls: [DAT-06]
+  - code: P5.2
+    section: P5 Privacy - Access
+    title: Correction of personal information
+    description: Data subjects can request correction, amendment or annotation of their personal information, and the changes are passed on to relevant third parties.
+    controls: [DAT-06]
+  - code: P6.1
+    section: P6 Privacy - Disclosure and Notification
+    title: Disclosure to third parties with consent
+    description: Personal information is disclosed to third parties only for identified purposes and with the data subject's consent where required.
+    controls: [VEN-03, VEN-04, DAT-07]
+  - code: P6.2
+    section: P6 Privacy - Disclosure and Notification
+    title: Record of authorized disclosures
+    description: Complete and accurate records of authorized disclosures of personal information are created and kept.
+    controls: [DAT-07, LOG-01]
+  - code: P6.3
+    section: P6 Privacy - Disclosure and Notification
+    title: Record of unauthorized disclosures
+    description: Detected or reported unauthorized disclosures of personal information, including breaches, are recorded.
+    controls: [IR-04, IR-03]
+  - code: P6.4
+    section: P6 Privacy - Disclosure and Notification
+    title: Third-party privacy commitments
+    description: Vendors and other third parties with access to personal information are bound to privacy commitments and their compliance is assessed periodically.
+    controls: [VEN-02, VEN-03, VEN-04]
+  - code: P6.5
+    section: P6 Privacy - Disclosure and Notification
+    title: Third parties report unauthorized disclosures
+    description: Third parties with access to personal information commit to notify the organization of unauthorized disclosures.
+    controls: [VEN-03]
+  - code: P6.6
+    section: P6 Privacy - Disclosure and Notification
+    title: Breach notification to affected parties
+    description: Affected data subjects, regulators and others are notified of breaches and incidents involving personal information as required.
+    controls: [IR-03, IR-01]
+  - code: P6.7
+    section: P6 Privacy - Disclosure and Notification
+    title: Accounting of disclosures to data subjects
+    description: Data subjects can obtain an accounting of the personal information held about them and of disclosures made of it.
+    controls: [DAT-06, DAT-07]
+  - code: P7.1
+    section: P7 Privacy - Quality
+    title: Accurate and complete personal information
+    description: Personal information is collected and maintained so that it stays accurate, up to date, complete and relevant for its purposes.
+    controls: [DAT-06, AI-06]
+  - code: P8.1
+    section: P8 Privacy - Monitoring and Enforcement
+    title: Privacy inquiries, complaints and compliance monitoring
+    description: A process exists to receive, address and resolve privacy inquiries, complaints and disputes, and compliance with privacy commitments is monitored and corrected.
+    controls: [DAT-06, GOV-03, GOV-08, AI-08]

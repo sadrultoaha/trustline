@@ -58,9 +58,10 @@ selected by config. The fake must be realistic enough for the complete user flow
 |---|---|---|---|
 | `mail.Sender` | SMTP (mailpit locally) | in-memory outbox (tests) | `MAIL_MODE=smtp\|memory` |
 | `oauth.Provider` (Google) | `golang.org/x/oauth2` + userinfo | self-hosted consent page at `/auth/fake-google/authorize` | `GOOGLE_OAUTH_MODE=fake\|real` |
-| `connectors.Connector` (Phase 1) | AWS/GCP/GitHub/Okta/… SDK clients | controllable snapshots stored in DB | per-integration `mode` |
-| `ai.Provider` (Phase 5) | Anthropic API | deterministic fake | `AI_MODE=fake\|anthropic` |
-| `blob.Store` (Phase 1) | S3 / MinIO | local filesystem | `BLOB_MODE` |
+| `connectors.Connector` | AWS/GCP/GitHub/Okta/… API clients (Phase 6) | sandbox: controllable state stored on the integration row | per-integration `mode` (`sandbox`/`live`) |
+| `ai.Provider` | Anthropic Messages API (`AI_MODEL`, default `claude-sonnet-4-6`) | deterministic fake producing the same structured outputs | `AI_MODE=fake\|anthropic` |
+| `blob.Store` | S3-compatible (MinIO locally) | local filesystem | `BLOB_MODE=s3\|fs` |
+| Slack notifications | incoming-webhook POST (org setting) | any HTTP endpoint (tests use `httptest`) | `settings.slack_webhook_url` |
 
 ---
 
@@ -94,10 +95,26 @@ trustline/
 └── Makefile                 dev, test, e2e, seed, migrate
 ```
 
-Later phases add packages under `internal/`: `frameworks`, `controls`, `integrations`,
-`connectors/{aws,gcp,github,okta,gworkspace,hris,mdm}`, `testengine`, `evidence`, `policies`,
-`risks`, `vendors`, `people`, `accessreview`, `audits`, `trustcenter`, `questionnaires`,
-`ai`, `mcp`, `webhooks`, `apikeys`.
+Phase 1 packages:
+
+```
+internal/
+├── catalog/            embedded compliance content + loader + DB sync
+│   └── data/           controls.yaml, resources.yaml, frameworks/*.yaml, tests/*.yaml
+├── testengine/         rule parsing, validation and evaluation (pure, no I/O)
+├── connectors/         Connector interface, registry + credential schemas, sandbox fakes & scenarios
+├── compliance/         frameworks, readiness, controls, status recompute, integrations, test runs,
+│                       evidence, remediation tasks, notifications, dashboard
+├── ai/                 Provider (Anthropic + Fake), prompts/*.tmpl, redaction, cost logging
+├── blob/               evidence storage (S3/MinIO + filesystem)
+├── secrets/            AES-256-GCM for integration credentials
+├── worker/             River workers + periodic schedules
+├── app/                constructors shared by cmd/ and the test harness
+└── bootstrap/          migrations + catalog sync on boot
+```
+
+Later phases add `policies`, `risks`, `vendors`, `people`, `accessreview`, `audits`,
+`trustcenter`, `questionnaires`, `mcp`, `webhooks`, `apikeys`.
 
 ### Layering rules
 
@@ -221,6 +238,12 @@ remediation:
   iac_hint: terraform:aws_s3_bucket_public_access_block
 ```
 
+Fan-out semantics: a path with `[*]` yields several values; the condition holds when **every**
+value satisfies it (vacuously true when there are none) unless the condition sets
+`"match": "any"`. Quantifier `all` over an empty (filtered) set passes; `any` over an empty set
+fails. Every failing resource gets a human-readable reason
+(`public_access_block.block_public_acls = false (expected = true)`).
+
 Expression grammar (JSON or YAML):
 
 ```
@@ -231,8 +254,8 @@ expr := { "and": [expr, …] }
 
 path := dotted path into the resource; `[*]` fans out over arrays (e.g. access_keys[*].age_days)
 op   := eq | neq | gt | gte | lt | lte | in | nin | contains | not_contains
-      | exists | not_exists | matches (regex) | before | after (RFC3339 or relative "-90d")
-      | len_gt | len_lt | all_true | any_true
+      | exists | not_exists | matches (RE2 regex) | len_gt | len_lt
+      (gt/gte/lt/lte also compare RFC3339 / YYYY-MM-DD dates)
 ```
 
 Result of a run:
@@ -290,3 +313,59 @@ The E2E suite is the acceptance test for each phase and, by the end, walks the f
 * Rate limits on signup/login/forgot-password (Redis).
 * `ActivityLog` is append-only (DB trigger rejects UPDATE/DELETE).
 * Integration credentials (Phase 1) encrypted at rest with AES-256-GCM under `ENCRYPTION_KEY`.
+
+---
+
+## 11. Continuous monitoring (Phase 1)
+
+```
+ SchedulerTick (every SCHEDULER_INTERVAL; 20s in compose, 1h default)
+   └─ for each enabled integration → SyncIntegration (queue: sync, unique per integration)
+        connector.Sync() → snapshots row (frozen JSON + SHA-256) → RunTests (queue: tests)
+          evaluate enabled tests for that connector → test_runs rows
+          recompute affected controls → transitions
+            test → fail      : open remediation task (one open task per test) → GenerateRemediation (queue: ai)
+            test fail → pass : task auto-resolved ("Resolved automatically…")
+            control → failing: notifications (admins, editors, owner) + email jobs + Slack job
+            control recovers : same channels
+```
+
+**Catalog → org instances.** Catalog tables (`catalog_*`) are global and read-only, synced from
+YAML on every boot. Adopting a framework creates org `controls` for every control code that
+framework maps to (existing controls are reused, which is how the crosswalk carries readiness).
+Connecting an integration instantiates org `tests` for every catalog test whose connector matches
+and whose control is in scope. One integration per connector type per org.
+
+**Control status** (`compliance.deriveStatus`):
+
+| Condition | Status |
+|---|---|
+| any enabled test failing or erroring | `failing` |
+| ≥1 enabled test and all pass | `passing` |
+| otherwise, accepted unexpired evidence exists (`COALESCE(override, ai) = pass`) | `passing` |
+| otherwise | `needs_evidence` |
+
+**Readiness.** A requirement is *met* when every control it maps to is in the org and passing.
+Framework readiness % = met requirements / total requirements. Control-level counts are shown
+alongside.
+
+**Evidence.** Uploaded to the blob store under `orgs/<org>/evidence/<id>/<file>`, SHA-256
+recorded, expiry defaults to the control's `evidence_ttl_days`. `ValidateEvidence` (queue: ai)
+asks the AI layer for `{verdict, confidence, reasoning, missing}`; a reviewer's override always
+wins. A daily job re-evaluates controls whose evidence expired.
+
+**Sandbox connectors.** Each sandbox integration stores its full resource state. The baseline is
+realistic for the org (same people across Okta, Google Workspace, GitHub, AWS and the HRIS) and
+deliberately contains a handful of common gaps. Named scenarios (e.g. `public_bucket`) are
+reversible mutations: state = baseline + active scenarios. `PUT …/sandbox/state` replaces the
+state wholesale for advanced cases.
+
+## 12. AI layer (Phase 1 slice)
+
+`ai.Service` is the only way code reaches a model. It checks the org opt-out
+(`settings.ai_enabled`), renders a versioned prompt template (`prompts/<task>.v<N>.tmpl`, with
+`system` and `user` blocks), redacts emails, cloud keys, tokens, card numbers and phone numbers,
+calls the provider with a JSON schema (Anthropic structured outputs, adaptive thinking), parses
+the result, and logs tokens, cost and latency to `ai_calls`. Tasks implemented: `remediation_plan`
+(steps + Terraform for the failing resources) and `evidence_validation`. Phase 5 adds the
+assistant, agent tools and MCP on the same package.

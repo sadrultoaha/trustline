@@ -22,8 +22,11 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	tcpg "github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/trustline/trustline/internal/app"
 	"github.com/trustline/trustline/internal/auth"
 	"github.com/trustline/trustline/internal/auth/oauth"
+	"github.com/trustline/trustline/internal/bootstrap"
+	"github.com/trustline/trustline/internal/compliance"
 	"github.com/trustline/trustline/internal/config"
 	"github.com/trustline/trustline/internal/db"
 	"github.com/trustline/trustline/internal/httpapi"
@@ -70,7 +73,7 @@ func DatabaseURL(t testing.TB) string {
 			return
 		}
 		defer pool.Close()
-		dbErr = db.Migrate(ctx, pool, slog.New(slog.NewTextHandler(io.Discard, nil)))
+		dbErr = bootstrap.Prepare(ctx, pool, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	})
 	if dbErr != nil {
 		t.Fatalf("test database: %v", dbErr)
@@ -104,6 +107,9 @@ type App struct {
 	OAuth  *oauth.Fake
 	Config *config.Config
 	Jobs   *jobs.Client
+	Comp   *compliance.Service
+	log    *slog.Logger
+	worker *app.Worker
 }
 
 // NewApp builds the API with memory mail, memory rate limiting and fake OAuth.
@@ -115,16 +121,59 @@ func NewApp(t testing.TB) *App {
 	if os.Getenv("TEST_LOG") != "" {
 		log = slog.New(slog.NewTextHandler(os.Stderr, nil))
 	}
-	cfg := &config.Config{Env: config.EnvTest, BaseURL: "http://app.test", SessionTTL: time.Hour, GoogleOAuthMode: "fake", MailMode: "memory"}
+	cfg := &config.Config{Env: config.EnvTest, BaseURL: "http://app.test", SessionTTL: time.Hour, GoogleOAuthMode: "fake", MailMode: "memory",
+		EncryptionKey: "test-encryption-key-0123456789", BlobMode: "fs", BlobDir: sharedBlobDir(t), AIMode: "fake",
+		SchedulerInterval: time.Hour, WorkerQueueDefault: 5}
 	jc, err := jobs.NewInsertOnly(pool, log)
 	if err != nil {
 		t.Fatal(err)
 	}
+	comp, err := app.NewCompliance(context.Background(), cfg, pool, jc, log)
+	if err != nil {
+		t.Fatal(err)
+	}
 	fake := oauth.NewFake(cfg.BaseURL, cfg.BaseURL+"/auth/google/callback")
-	srv := httpapi.New(httpapi.Deps{Config: cfg, Log: log, Pool: pool, Jobs: jc, OAuth: fake, Limiter: ratelimit.NewMemory(), Sessions: auth.NewSessions(pool, cfg.SessionTTL)})
+	srv := httpapi.New(httpapi.Deps{Config: cfg, Log: log, Pool: pool, Jobs: jc, OAuth: fake, Limiter: ratelimit.NewMemory(), Sessions: auth.NewSessions(pool, cfg.SessionTTL), Compliance: comp})
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)
-	return &App{Pool: pool, Server: ts, Mail: &mail.Memory{}, OAuth: fake, Config: cfg, Jobs: jc}
+	return &App{Pool: pool, Server: ts, Mail: &mail.Memory{}, OAuth: fake, Config: cfg, Jobs: jc, Comp: comp, log: log}
+}
+
+// StartWorker runs the production worker (all queues, fake AI, memory mail)
+// in-process. Jobs from every test share one database, so workers from other
+// tests may pick up this test's jobs too; assertions poll for outcomes.
+func (a *App) StartWorker(t testing.TB) {
+	t.Helper()
+	w, err := app.NewWorker(context.Background(), a.Config, a.Pool, a.Mail, app.NewAIProvider(a.Config), a.log)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Workers share the blob store with the API so evidence written via HTTP is readable.
+	w.Comp.Blob = a.Comp.Blob
+	ctx, cancel := context.WithCancel(context.Background())
+	if err := w.Client.River.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		sctx, c := context.WithTimeout(context.Background(), 10*time.Second)
+		defer c()
+		_ = w.Client.River.Stop(sctx)
+		cancel()
+	})
+	a.worker = w
+}
+
+// Eventually polls fn until it returns true or the timeout passes.
+func Eventually(t testing.TB, timeout time.Duration, msg string, fn func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if fn() {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatalf("timed out after %s waiting for: %s", timeout, msg)
 }
 
 // Client is an HTTP client with its own cookie jar (one browser session).
@@ -209,4 +258,46 @@ func (c *Client) DoForm(path string, fields map[string]string) Resp {
 	defer res.Body.Close()
 	raw, _ := io.ReadAll(res.Body)
 	return Resp{Status: res.StatusCode, Raw: raw, Header: res.Header}
+}
+
+// Upload posts a multipart file.
+func (c *Client) Upload(path, field, filename string, data []byte, fields map[string]string) Resp {
+	c.t.Helper()
+	var buf strings.Builder
+	boundary := "tlboundary" + fmt.Sprint(time.Now().UnixNano())
+	for k, v := range fields {
+		fmt.Fprintf(&buf, "--%s\r\nContent-Disposition: form-data; name=%q\r\n\r\n%s\r\n", boundary, k, v)
+	}
+	fmt.Fprintf(&buf, "--%s\r\nContent-Disposition: form-data; name=%q; filename=%q\r\nContent-Type: application/octet-stream\r\n\r\n", boundary, field, filename)
+	buf.Write(data)
+	fmt.Fprintf(&buf, "\r\n--%s--\r\n", boundary)
+	req, _ := http.NewRequest("POST", c.base+path, strings.NewReader(buf.String()))
+	req.Header.Set("Content-Type", "multipart/form-data; boundary="+boundary)
+	res, err := c.http.Do(req)
+	if err != nil {
+		c.t.Fatalf("upload %s: %v", path, err)
+	}
+	defer res.Body.Close()
+	raw, _ := io.ReadAll(res.Body)
+	out := Resp{Status: res.StatusCode, Raw: raw, Header: res.Header}
+	_ = json.Unmarshal(raw, &out.Body)
+	return out
+}
+
+var (
+	blobOnce sync.Once
+	blobDir  string
+)
+
+// sharedBlobDir is one directory for all apps in the test process, because any
+// test's worker may pick up any test's evidence job.
+func sharedBlobDir(t testing.TB) string {
+	blobOnce.Do(func() {
+		d, err := os.MkdirTemp("", "trustline-blobs-")
+		if err != nil {
+			t.Fatal(err)
+		}
+		blobDir = d
+	})
+	return blobDir
 }

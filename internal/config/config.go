@@ -49,6 +49,21 @@ type Config struct {
 
 	// Worker concurrency
 	WorkerQueueDefault int
+
+	// Evidence storage
+	BlobMode    string // "s3" | "fs"
+	BlobDir     string
+	S3Endpoint  string
+	S3Region    string
+	S3Bucket    string
+	S3AccessKey string
+	S3SecretKey string
+	S3PathStyle bool
+
+	// AI
+	AIMode          string // "fake" | "anthropic"
+	AnthropicAPIKey string
+	AIModel         string
 }
 
 func getenv(key, def string) string {
@@ -115,6 +130,20 @@ func Load() (*Config, error) {
 		EncryptionKey:      getenv("ENCRYPTION_KEY", ""),
 		SchedulerInterval:  getdur("SCHEDULER_INTERVAL", time.Hour),
 		WorkerQueueDefault: getint("WORKER_QUEUE_DEFAULT", 10),
+		BlobMode:           getenv("BLOB_MODE", "fs"),
+		BlobDir:            getenv("BLOB_DIR", "./var/blobs"),
+		S3Endpoint:         getenv("S3_ENDPOINT", ""),
+		S3Region:           getenv("S3_REGION", "us-east-1"),
+		S3Bucket:           getenv("S3_BUCKET", "trustline-evidence"),
+		S3AccessKey:        getenv("S3_ACCESS_KEY", ""),
+		S3SecretKey:        getenv("S3_SECRET_KEY", ""),
+		S3PathStyle:        getbool("S3_PATH_STYLE", true),
+		AIMode:             getenv("AI_MODE", "fake"),
+		AnthropicAPIKey:    getenv("ANTHROPIC_API_KEY", ""),
+		AIModel:            getenv("AI_MODEL", "claude-sonnet-4-6"),
+	}
+	if c.EncryptionKey == "" && c.Env != EnvProd {
+		c.EncryptionKey = "dev-only-insecure-encryption-key-change-me"
 	}
 	return c, c.Validate()
 }
@@ -143,6 +172,21 @@ func (c *Config) Validate() error {
 	case "smtp", "memory":
 	default:
 		errs = append(errs, fmt.Errorf("MAIL_MODE must be smtp or memory (got %q)", c.MailMode))
+	}
+	switch c.BlobMode {
+	case "s3", "fs":
+	default:
+		errs = append(errs, fmt.Errorf("BLOB_MODE must be s3 or fs (got %q)", c.BlobMode))
+	}
+	switch c.AIMode {
+	case "fake":
+	case "anthropic":
+		// The SDK also resolves ANTHROPIC_AUTH_TOKEN / ant profiles, so a missing key is not fatal.
+	default:
+		errs = append(errs, fmt.Errorf("AI_MODE must be fake or anthropic (got %q)", c.AIMode))
+	}
+	if len(c.EncryptionKey) < 16 {
+		errs = append(errs, errors.New("ENCRYPTION_KEY must be at least 16 characters"))
 	}
 	if c.Env == EnvProd && c.EncryptionKey == "" {
 		errs = append(errs, errors.New("ENCRYPTION_KEY is required in prod"))

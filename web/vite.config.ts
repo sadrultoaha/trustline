@@ -12,6 +12,7 @@ export default defineConfig({
       '/api': { target: 'http://localhost:8080', changeOrigin: false },
       '/auth': { target: 'http://localhost:8080', changeOrigin: false },
       '/healthz': 'http://localhost:8080',
+      '/agent': 'http://localhost:8080',
       '/readyz': 'http://localhost:8080',
     },
   },

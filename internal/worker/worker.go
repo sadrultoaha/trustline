@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -39,6 +40,9 @@ func Register(w *river.Workers, d *Deps) {
 	river.AddWorker(w, &evidenceWorker{d: d})
 	river.AddWorker(w, &slackWorker{d: d})
 	river.AddWorker(w, &expireWorker{d: d})
+	river.AddWorker(w, &consistencyWorker{d: d})
+	river.AddWorker(w, &dailyWorker{d: d})
+	river.AddWorker(w, &platformWorker{d: d})
 }
 
 // Periodic returns the schedules: connector syncs every interval, evidence expiry daily.
@@ -49,6 +53,9 @@ func Periodic(interval time.Duration) []*river.PeriodicJob {
 		}, &river.PeriodicJobOpts{RunOnStart: true}),
 		river.NewPeriodicJob(river.PeriodicInterval(24*time.Hour), func() (river.JobArgs, *river.InsertOpts) {
 			return jobs.ExpireEvidenceArgs{}, nil
+		}, &river.PeriodicJobOpts{RunOnStart: true}),
+		river.NewPeriodicJob(river.PeriodicInterval(24*time.Hour), func() (river.JobArgs, *river.InsertOpts) {
+			return jobs.DailyMaintenanceArgs{}, nil
 		}, &river.PeriodicJobOpts{RunOnStart: true}),
 	}
 }
@@ -217,4 +224,59 @@ type expireWorker struct {
 
 func (w *expireWorker) Work(ctx context.Context, _ *river.Job[jobs.ExpireEvidenceArgs]) error {
 	return w.d.Compliance.ExpireEvidence(ctx)
+}
+
+type consistencyWorker struct {
+	river.WorkerDefaults[jobs.PolicyConsistencyArgs]
+	d *Deps
+}
+
+func (w *consistencyWorker) Work(ctx context.Context, job *river.Job[jobs.PolicyConsistencyArgs]) error {
+	org, v, err := ids(job.Args.OrgID, job.Args.VersionID)
+	if err != nil {
+		return river.JobCancel(err)
+	}
+	_, err = w.d.Compliance.CheckConsistency(ctx, w.d.AI, org, v)
+	var verr *domain.ValidationError
+	if errors.As(err, &verr) {
+		return nil // AI disabled for the org
+	}
+	return err
+}
+
+type dailyWorker struct {
+	river.WorkerDefaults[jobs.DailyMaintenanceArgs]
+	d *Deps
+}
+
+func (w *dailyWorker) Work(ctx context.Context, _ *river.Job[jobs.DailyMaintenanceArgs]) error {
+	c := w.d.Compliance
+	if err := c.PolicyReviewReminders(ctx); err != nil {
+		return fmt.Errorf("policy reviews: %w", err)
+	}
+	if err := c.ScheduleAccessReviews(ctx); err != nil {
+		return fmt.Errorf("access reviews: %w", err)
+	}
+	if err := c.TrainingRenewals(ctx); err != nil {
+		return fmt.Errorf("training renewals: %w", err)
+	}
+	return nil
+}
+
+type platformWorker struct {
+	river.WorkerDefaults[jobs.PlatformSyncArgs]
+	d *Deps
+}
+
+func (w *platformWorker) Work(ctx context.Context, job *river.Job[jobs.PlatformSyncArgs]) error {
+	org, err := domain.ParseID(job.Args.OrgID)
+	if err != nil {
+		return river.JobCancel(err)
+	}
+	id, err := w.d.Compliance.PlatformIntegrationID(ctx, org)
+	if err != nil || id == nil {
+		return err
+	}
+	_, err = w.d.Compliance.SyncIntegration(ctx, org, *id, "platform")
+	return err
 }

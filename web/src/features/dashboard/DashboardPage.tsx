@@ -8,6 +8,7 @@ import { ControlStatusBadge } from '@/components/status'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ReadinessCard } from '@/features/frameworks/FrameworksPage'
+import { MyWorkPage } from '@/features/mywork/MyWorkPage'
 
 export function DashboardPage() {
   const { data: me } = useMe()
@@ -16,10 +17,10 @@ export function DashboardPage() {
   if (!can('controls:read')) {
     return (
       <div>
-        <PageHeader title={`Welcome, ${me?.user.name ?? ''}`} description={`${me?.org?.name ?? ''} · signed in as ${me?.role}`} />
-        <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">Your policy acceptances, training and device tasks will appear here.</CardContent>
-        </Card>
+        <p className="mb-2 text-sm text-muted-foreground" data-testid="employee-home">
+          {me?.org?.name} · signed in as {me?.role}
+        </p>
+        <MyWorkPage />
       </div>
     )
   }

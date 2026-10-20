@@ -215,3 +215,35 @@ func (ExpireEvidenceArgs) Kind() string { return "expire_evidence" }
 func (ExpireEvidenceArgs) InsertOpts() river.InsertOpts {
 	return river.InsertOpts{Queue: QueueDefault, MaxAttempts: 3}
 }
+
+// PolicyConsistencyArgs checks a published policy version against settings.
+type PolicyConsistencyArgs struct {
+	OrgID     string `json:"org_id"`
+	VersionID string `json:"version_id"`
+}
+
+func (PolicyConsistencyArgs) Kind() string { return "policy_consistency" }
+func (PolicyConsistencyArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: QueueAI, MaxAttempts: 3}
+}
+
+// DailyMaintenanceArgs runs reminders and schedules (policy reviews, access
+// review campaigns, training renewals).
+type DailyMaintenanceArgs struct{}
+
+func (DailyMaintenanceArgs) Kind() string { return "daily_maintenance" }
+func (DailyMaintenanceArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: QueueDefault, MaxAttempts: 3}
+}
+
+// PlatformSyncArgs rebuilds an org's platform snapshot. Not unique: a change
+// made while a sync is running must still produce a fresh snapshot; test runs
+// ignore snapshots that are older than the latest one.
+type PlatformSyncArgs struct {
+	OrgID string `json:"org_id"`
+}
+
+func (PlatformSyncArgs) Kind() string { return "platform_sync" }
+func (PlatformSyncArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{Queue: QueueSync, MaxAttempts: 3}
+}

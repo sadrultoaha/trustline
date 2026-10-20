@@ -67,6 +67,7 @@ export function TestBuilderPage() {
   const [remSummary, setRemSummary] = useState('')
   const [remSteps, setRemSteps] = useState('')
   const [showJSON, setShowJSON] = useState(false)
+  const [requireResources, setRequireResources] = useState(true)
   const [fieldsErr, setFieldsErr] = useState<Record<string, string>>({})
 
   const conn = schema.data?.connectors.find((c) => c.type === connector)
@@ -78,6 +79,7 @@ export function TestBuilderPage() {
     const a = toExpr(assert, fieldMap)
     if (!a) return null
     const r: Rule = { resource: rt.type, quantifier, assert: a }
+    if (requireResources) r.require_resources = true
     const w = toExpr(where, fieldMap)
     if (w) r.where = w
     if (quantifier === 'count') {
@@ -142,6 +144,10 @@ export function TestBuilderPage() {
                   <option value="count">a number of resources match</option>
                 </Select>
               </FormField>
+              <label className="flex items-center gap-2 text-sm md:col-span-3">
+                <input type="checkbox" checked={requireResources} onChange={(e) => setRequireResources(e.target.checked)} />
+                Mark the test not applicable (instead of passing) when there are no {rt?.label.toLowerCase() ?? 'resources'} records
+              </label>
               {quantifier === 'count' ? (
                 <>
                   <FormField label="Minimum" htmlFor="b-min">

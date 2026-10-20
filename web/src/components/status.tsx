@@ -25,6 +25,7 @@ const testStyles: Record<TestStatus, { label: string; cls: string; Icon: typeof 
   fail: { label: 'Fail', cls: 'bg-destructive/15 text-destructive', Icon: XCircle },
   error: { label: 'Error', cls: 'bg-destructive/15 text-destructive', Icon: AlertTriangle },
   pending: { label: 'Pending', cls: 'bg-muted text-muted-foreground', Icon: Clock },
+  na: { label: 'Not applicable', cls: 'bg-muted text-muted-foreground', Icon: CircleDashed },
 }
 
 export function TestStatusBadge({ status }: { status: TestStatus }) {

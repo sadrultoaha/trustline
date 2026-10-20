@@ -1,0 +1,91 @@
+---
+id: ai-acceptable-use
+title: AI Acceptable Use Policy
+category: AI
+summary: Governs how personnel select and use generative AI and other AI tools, including what data may be shared and how outputs are reviewed.
+controls: [AI-01, AI-03, AI-05, AI-06, AI-07, AST-02]
+review_cycle_days: 365
+---
+# AI Acceptable Use Policy
+
+**Organization:** {{org_name}}
+**Effective date:** {{effective_date}}
+**Policy owner:** {{security_officer}}
+
+## Purpose
+
+Artificial intelligence tools, especially generative AI assistants, can make personnel more productive, but they also introduce risks: confidential data can leak to providers, outputs can be wrong or biased, and generated content can infringe the rights of others. This policy sets out how {{org_name}} personnel may use AI tools safely and responsibly.
+
+## Scope
+
+This policy applies to all personnel and to any use of AI tools for {{org_name}} work, including:
+
+- Generative AI chat assistants, writing tools, and image generators.
+- AI coding assistants integrated into editors or repositories.
+- AI features embedded in existing SaaS products (for example, meeting summarizers or email assistants).
+- AI models and APIs used in {{org_name}} products or internal automation.
+
+## Roles and responsibilities
+
+- **Security officer ({{security_officer}})** owns this policy, maintains the AI system inventory, and approves AI tools.
+- **AI tool owners** are accountable for each approved AI tool or AI-enabled product feature, its configuration, and its compliance with this policy.
+- **Legal / privacy lead** reviews AI vendor terms, data protection implications, and transparency obligations.
+- **Managers** ensure their teams use only approved tools and follow review requirements.
+- **All personnel** must use AI tools in line with this policy and remain responsible for their work output.
+
+## Policy statements
+
+### Approved tools and inventory
+
+1. Personnel must use only AI tools that appear on the {{org_name}} approved AI tools list for work purposes. Using unapproved AI tools with any non-public company information is prohibited.
+2. {{org_name}} must maintain an inventory of AI systems in use, including approved third-party tools and AI capabilities built into its own products. Each entry must record the owner, purpose, vendor, data categories processed, and approval date.
+3. The inventory must be reviewed at least every six months to confirm accuracy and remove tools that are no longer used.
+
+### Approval of AI vendors
+
+4. Before an AI tool is approved, it must pass a vendor security review under the Vendor Management Policy. The review must also confirm:
+   - Whether customer inputs or outputs are used to train the vendor's models, and that training on {{org_name}} data is disabled or contractually prohibited.
+   - Data retention by the vendor and the ability to delete data.
+   - Data location and subprocessors.
+   - Availability of enterprise controls such as single sign-on, audit logs, and administrative settings.
+5. AI tools must be accessed through company-managed accounts with single sign-on where available. Personal accounts must not be used for work.
+
+### Data that may not be entered
+
+6. Information must be handled in AI tools according to its classification under the data classification standard. Unless a specific tool has been approved for that classification, personnel must not enter:
+   - Customer data, including content customers upload to {{org_name}} products.
+   - Personal data of customers, employees, or candidates.
+   - Credentials, API keys, secrets, or private keys.
+   - Restricted or confidential information, including unreleased financials, security vulnerabilities, legal matters, and non-public source code.
+   - Information {{org_name}} is contractually required to keep confidential.
+7. Public information and information classified as internal may be entered into approved tools unless a tool's approval states otherwise.
+8. Approved tools must display, in the approved tools list, the highest data classification permitted for them.
+
+### Human review and oversight
+
+9. AI output must be treated as a draft. A responsible person must review AI-generated content for accuracy, completeness, bias, and appropriateness before it is used in any decision, sent externally, published, or merged into production code.
+10. AI-generated code must go through the same peer review, testing, and security scanning as any other code under the Change Management Policy.
+11. AI must not be used as the sole basis for decisions that have legal or similarly significant effects on individuals, such as hiring, termination, performance evaluation, or credit decisions. A qualified human must make and be accountable for such decisions.
+
+### Transparency
+
+12. Where {{org_name}} products use AI to interact with users or generate content shown to them, users must be informed that AI is involved, in clear language.
+13. Content published externally that is substantially generated by AI must be disclosed where required by law, contract, or platform rules.
+14. Personnel must not use AI to impersonate real people or to create misleading content.
+
+### Intellectual property and incidents
+
+15. Personnel must not submit third-party copyrighted material to AI tools in ways that breach license terms, and must check that generated output does not reproduce protected material before publishing it.
+16. Suspected data leakage through an AI tool, or harmful or seriously inaccurate AI output, must be reported to the security team as a security incident.
+
+## Exceptions
+
+Exceptions, such as a pilot of a new AI tool with limited data, must be approved in writing by the security officer, limited to no more than 90 days, and recorded in the AI system inventory.
+
+## Enforcement
+
+Use of unapproved AI tools with company data, or entering prohibited data into AI tools, may result in disciplinary action up to termination. Compliance is monitored through SSO and network logs, the AI inventory, and periodic audits.
+
+## Review
+
+This policy must be reviewed at least annually, and sooner if significant changes in AI technology, regulation, or {{org_name}}'s use of AI occur.

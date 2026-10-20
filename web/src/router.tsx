@@ -19,6 +19,15 @@ import { TasksPage } from '@/features/tasks/TasksPage'
 import { TestBuilderPage } from '@/features/tests/TestBuilderPage'
 import { TestDetailPage } from '@/features/tests/TestDetailPage'
 import { TestsPage } from '@/features/tests/TestsPage'
+import { MyWorkPage } from '@/features/mywork/MyWorkPage'
+import { TrainingPage } from '@/features/mywork/TrainingPage'
+import { DevicesPage } from '@/features/people/DevicesPage'
+import { PeoplePage } from '@/features/people/PeoplePage'
+import { PersonDetailPage } from '@/features/people/PersonDetailPage'
+import { PoliciesPage } from '@/features/policies/PoliciesPage'
+import { PolicyDetailPage } from '@/features/policies/PolicyDetailPage'
+import { AccessReviewsPage } from '@/features/reviews/AccessReviewsPage'
+import { CampaignPage } from '@/features/reviews/CampaignPage'
 import { InvitePage } from '@/features/invite/InvitePage'
 import { OnboardingPage } from '@/features/onboarding/OnboardingPage'
 import { ActivityPage } from '@/features/settings/ActivityPage'
@@ -127,6 +136,16 @@ const testRoute = createRoute({ getParentRoute: () => appRoute, path: 'tests/$id
 const tasksRoute = createRoute({ getParentRoute: () => appRoute, path: 'tasks', component: TasksPage })
 const taskRoute = createRoute({ getParentRoute: () => appRoute, path: 'tasks/$id', component: TaskDetailPage })
 
+const policiesRoute = createRoute({ getParentRoute: () => appRoute, path: 'policies', component: PoliciesPage })
+const policyRoute = createRoute({ getParentRoute: () => appRoute, path: 'policies/$id', component: PolicyDetailPage })
+const peopleRoute = createRoute({ getParentRoute: () => appRoute, path: 'people', component: PeoplePage })
+const personRoute = createRoute({ getParentRoute: () => appRoute, path: 'people/$id', component: PersonDetailPage })
+const devicesRoute = createRoute({ getParentRoute: () => appRoute, path: 'devices', component: DevicesPage })
+const reviewsRoute = createRoute({ getParentRoute: () => appRoute, path: 'access-reviews', component: AccessReviewsPage })
+const reviewRoute = createRoute({ getParentRoute: () => appRoute, path: 'access-reviews/$id', component: CampaignPage })
+const myWorkRoute = createRoute({ getParentRoute: () => appRoute, path: 'my-work', component: MyWorkPage })
+const trainingRoute = createRoute({ getParentRoute: () => appRoute, path: 'training', component: TrainingPage })
+
 const settingsRoute = createRoute({ getParentRoute: () => appRoute, path: 'settings', component: SettingsLayout })
 const settingsIndexRoute = createRoute({
   getParentRoute: () => settingsRoute,
@@ -161,6 +180,15 @@ const routeTree = rootRoute.addChildren([
     testRoute,
     tasksRoute,
     taskRoute,
+    policiesRoute,
+    policyRoute,
+    peopleRoute,
+    personRoute,
+    devicesRoute,
+    reviewsRoute,
+    reviewRoute,
+    myWorkRoute,
+    trainingRoute,
     settingsRoute.addChildren([settingsIndexRoute, settingsOrgRoute, settingsMembersRoute, settingsActivityRoute, settingsProfileRoute]),
   ]),
 ])

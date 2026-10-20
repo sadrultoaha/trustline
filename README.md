@@ -23,6 +23,7 @@ Demo accounts (password `Trustline-demo-2026!`):
 | grace@acme.test     | editor   | Acme Corp          |
 | auditor@acme.test   | auditor  | Acme Corp          |
 | sam@acme.test       | employee | Acme Corp          |
+| jo@, kim@, maria@, tom@, lee@acme.test | employee | Acme Corp |
 | linus@globex.test   | admin    | Globex Corporation |
 
 Mailpit (all outgoing email): http://localhost:8025 · MinIO console: http://localhost:9001
@@ -33,6 +34,13 @@ Mailpit (all outgoing email): http://localhost:8025 · MinIO console: http://loc
 2. Open **Integrations → AWS → Manage** and turn on **Make the marketing bucket public**.
 3. Open **Controls → DAT-01**. Within one scheduler tick (20 seconds in Docker) it turns red, the bell shows a notification, and a remediation task appears with step-by-step instructions and a Terraform fix.
 4. Turn the scenario off and click **Sync now**: the control recovers and the task closes itself.
+
+## Try policies and offboarding (3 minutes)
+
+1. **Policies → Information Security Policy → New version**, edit, **Submit for approval** to Grace. Sign in as `grace@acme.test`, **Approve**; back as Ada, **Publish**. GOV-05 turns red until everyone acknowledges it from **My work**.
+2. **Integrations → HRIS → Manage**, choose `tom@acme.test`, **Terminate employee**, **Sync now**. Tom appears under **People → Terminated** with an offboarding checklist, and "Terminated employees are deactivated in the identity provider" fails.
+3. **Integrations → Okta**, **Deactivate user** for Tom, **Sync now**: the test passes and the Okta item verifies itself.
+4. **Access reviews → New review** (Okta + GitHub): revoke, keep the rest, **Complete review**; the CSV is filed as evidence on IAM-04.
 
 Set `AI_MODE=anthropic` and `ANTHROPIC_API_KEY` in `.env.docker` to use Claude instead of the deterministic fake.
 

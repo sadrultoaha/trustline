@@ -76,3 +76,35 @@ func TestFakeTerraformCoversCatalogHints(t *testing.T) {
 		}
 	}
 }
+
+func TestFakeConsistencyFindsMismatches(t *testing.T) {
+	text := "User access to production systems is reviewed every 90 days by system owners. Passwords must be at least 12 characters long. At least 90% of personnel must acknowledge this policy."
+	rep := fakeConsistency(ConsistencyInput{Title: "Access Control", Text: text, Facts: []Fact{
+		{Key: "access_review_days", Label: "Access review cadence (days)", Value: "180"},
+		{Key: "password_min_length", Label: "Minimum password length", Value: "12"},
+		{Key: "policy_acceptance_threshold", Label: "Acknowledgement threshold (%)", Value: "95"},
+	}})
+	if len(rep.Issues) != 2 {
+		t.Fatalf("expected 2 issues, got %+v", rep.Issues)
+	}
+	if rep.Issues[0].Setting != "access_review_days" || rep.Issues[0].PolicyValue != "90" || !strings.Contains(rep.Issues[0].Quote, "reviewed every 90 days") {
+		t.Fatalf("access review issue wrong: %+v", rep.Issues[0])
+	}
+	same := fakeConsistency(ConsistencyInput{Text: text, Facts: []Fact{{Key: "access_review_days", Value: "90"}}})
+	if len(same.Issues) != 0 {
+		t.Fatalf("matching values must not be reported: %+v", same.Issues)
+	}
+}
+
+func TestPolicyPromptsRender(t *testing.T) {
+	if _, _, err := render("policy_draft.v1", PolicyDraftInput{Title: "X", Systems: []string{"AWS"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := render("policy_consistency.v1", ConsistencyInput{Facts: []Fact{{Key: "a", Value: "1"}}}); err != nil {
+		t.Fatal(err)
+	}
+	d := fakePolicyDraft(PolicyDraftInput{OrgName: "Acme", Title: "Access Control Policy", Systems: []string{"Okta", "AWS"}, TemplateMarkdown: "# Access\n\n## Policy\n\ntext\n\n## Review\n\nyearly"})
+	if !strings.Contains(d.Markdown, "## Systems in scope") || strings.Index(d.Markdown, "Systems in scope") > strings.Index(d.Markdown, "## Review") {
+		t.Fatalf("draft not tailored: %s", d.Markdown)
+	}
+}

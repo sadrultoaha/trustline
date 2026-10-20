@@ -34,6 +34,18 @@ func (Fake) Generate(ctx context.Context, req Request) (*Response, error) {
 			return nil, fmt.Errorf("fake: evidence_validation needs EvidenceInput")
 		}
 		out = fakeEvidence(in, req.Attachments)
+	case "policy_draft":
+		in, ok := req.Input.(PolicyDraftInput)
+		if !ok {
+			return nil, fmt.Errorf("fake: policy_draft needs PolicyDraftInput")
+		}
+		out = fakePolicyDraft(in)
+	case "policy_consistency":
+		in, ok := req.Input.(ConsistencyInput)
+		if !ok {
+			return nil, fmt.Errorf("fake: policy_consistency needs ConsistencyInput")
+		}
+		out = fakeConsistency(in)
 	default:
 		return nil, fmt.Errorf("fake: unsupported task %q", req.Task)
 	}

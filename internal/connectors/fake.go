@@ -111,7 +111,7 @@ func awsBaseline(slug string, people []Person) map[string]any {
 	bucket := func(name string, logging bool, class string) map[string]any {
 		return map[string]any{"id": name, "region": "us-east-1",
 			"public_access_block": map[string]any{"block_public_acls": true, "ignore_public_acls": true, "block_public_policy": true, "restrict_public_buckets": true},
-			"public": false, "encryption": map[string]any{"enabled": true, "algorithm": "aws:kms"}, "versioning": true, "logging_enabled": logging,
+			"public":              false, "encryption": map[string]any{"enabled": true, "algorithm": "aws:kms"}, "versioning": true, "logging_enabled": logging,
 			"tags": map[string]any{"data_classification": class}}
 	}
 	return map[string]any{
@@ -191,7 +191,7 @@ func githubBaseline(slug, domain string, people []Person) map[string]any {
 			reviews = 2
 		}
 		return map[string]any{"id": slug + "/" + name, "private": true, "archived": !production && !protected, "production": production, "default_branch": "main",
-			"branch_protection": map[string]any{"enabled": protected, "required_approving_reviews": reviews, "dismiss_stale_reviews": protected, "require_code_owner_reviews": protected, "enforce_admins": protected, "required_status_checks": protected, "allow_force_pushes": !protected},
+			"branch_protection":         map[string]any{"enabled": protected, "required_approving_reviews": reviews, "dismiss_stale_reviews": protected, "require_code_owner_reviews": protected, "enforce_admins": protected, "required_status_checks": protected, "allow_force_pushes": !protected},
 			"dependabot_alerts_enabled": true, "dependabot_open_critical": critical, "dependabot_open_critical_overdue": overdue,
 			"secret_scanning_enabled": true, "code_scanning_enabled": production, "outside_collaborators": 0}
 	}
@@ -216,7 +216,7 @@ func oktaBaseline(domain string, people []Person) map[string]any {
 			"groups": []any{"Everyone", p.Department}})
 	}
 	return map[string]any{
-		"user": users,
+		"user":   users,
 		"policy": []any{map[string]any{"id": "Default Policy", "password_min_length": 14, "password_history": 24, "mfa_required": true, "session_idle_timeout_minutes": 30, "session_lifetime_hours": 12}},
 		"app": []any{
 			map[string]any{"id": "AWS IAM Identity Center", "sign_on_mode": "SAML_2_0", "critical": true, "assigned_users": 5},
@@ -271,12 +271,103 @@ type ScenarioInfo struct {
 	Key         string `json:"key"`
 	Label       string `json:"label"`
 	Description string `json:"description"`
+	// PerPerson scenarios take an email parameter: the stored key is "<key>:<email>".
+	PerPerson bool `json:"per_person"`
 }
 
 type scenario struct {
 	ScenarioInfo
 	apply func(res map[string]any, slug string)
+	// applyFor is used for per-person scenarios.
+	applyFor func(res map[string]any, slug, email string)
 }
+
+func localPart(email string) string {
+	if i := strings.Index(email, "@"); i >= 0 {
+		return email[:i]
+	}
+	return email
+}
+
+// lifecycleScenarios are per-person account changes used by onboarding,
+// offboarding and access-review flows.
+var lifecycleScenarios = map[string][]scenario{
+	"hris": {
+		{ScenarioInfo: ScenarioInfo{Key: "terminate", Label: "Terminate employee", Description: "Marks the employee terminated today in the HR system.", PerPerson: true}, applyFor: func(r map[string]any, _ string, email string) {
+			for _, e := range all(r, "employee") {
+				if strings.EqualFold(fmt.Sprint(e["email"]), email) {
+					e["status"] = "terminated"
+					e["termination_date"] = time.Now().UTC().Format("2006-01-02")
+				}
+			}
+		}},
+		{ScenarioInfo: ScenarioInfo{Key: "hire_new_employee", Label: "Hire a new employee", Description: "Adds Nina Petrova (Engineering) starting today."}, apply: func(r map[string]any, slug string) {
+			list, _ := r["employee"].([]any)
+			r["employee"] = append(list, map[string]any{"id": "E201", "email": "nina@" + slug + ".test", "name": "Nina Petrova", "department": "Engineering",
+				"title": "Software Engineer", "manager_email": "grace@" + slug + ".test", "status": "active", "employment_type": "full_time",
+				"hire_date": time.Now().UTC().Format("2006-01-02"), "termination_date": nil, "location": "Amsterdam", "background_check": "pending"})
+		}},
+	},
+	"okta": {
+		{ScenarioInfo: ScenarioInfo{Key: "deactivate", Label: "Deactivate user", Description: "Deprovisions the user's Okta account.", PerPerson: true}, applyFor: func(r map[string]any, _ string, email string) {
+			for _, u := range all(r, "user") {
+				if strings.EqualFold(fmt.Sprint(u["email"]), email) {
+					u["status"] = "DEPROVISIONED"
+				}
+			}
+		}},
+	},
+	"google_workspace": {
+		{ScenarioInfo: ScenarioInfo{Key: "suspend", Label: "Suspend user", Description: "Suspends the user's Google Workspace account.", PerPerson: true}, applyFor: func(r map[string]any, _ string, email string) {
+			for _, u := range all(r, "user") {
+				if strings.EqualFold(fmt.Sprint(u["id"]), email) {
+					u["suspended"] = true
+				}
+			}
+		}},
+	},
+	"github": {
+		{ScenarioInfo: ScenarioInfo{Key: "remove_member", Label: "Remove from organization", Description: "Removes the person's account from the GitHub organization.", PerPerson: true}, applyFor: func(r map[string]any, _ string, email string) {
+			list, _ := r["member"].([]any)
+			var keep []any
+			for _, m := range list {
+				if mm, ok := m.(map[string]any); ok && strings.EqualFold(fmt.Sprint(mm["email"]), email) {
+					continue
+				}
+				keep = append(keep, m)
+			}
+			if keep == nil {
+				keep = []any{}
+			}
+			r["member"] = keep
+		}},
+	},
+	"aws": {
+		{ScenarioInfo: ScenarioInfo{Key: "remove_user", Label: "Delete IAM user", Description: "Deletes the person's IAM user.", PerPerson: true}, applyFor: func(r map[string]any, _ string, email string) {
+			list, _ := r["iam_user"].([]any)
+			var keep []any
+			for _, u := range list {
+				if uu, ok := u.(map[string]any); ok && fmt.Sprint(uu["id"]) == localPart(email) {
+					continue
+				}
+				keep = append(keep, u)
+			}
+			if keep == nil {
+				keep = []any{}
+			}
+			r["iam_user"] = keep
+		}},
+	},
+}
+
+// Merged during package variable initialization, which completes before any
+// init() (the registry in connector.go reads scenarios from its init).
+var _ = func() bool {
+	for typ, list := range lifecycleScenarios {
+		scenarios[typ] = append(scenarios[typ], list...)
+	}
+	return true
+}()
 
 func find(res map[string]any, typ, id string) map[string]any {
 	list, _ := res[typ].([]any)
@@ -301,29 +392,29 @@ func all(res map[string]any, typ string) []map[string]any {
 
 var scenarios = map[string][]scenario{
 	"aws": {
-		{ScenarioInfo{"public_bucket", "Make the marketing bucket public", "Disables Block Public Access on <org>-marketing-assets and grants public read."}, func(r map[string]any, slug string) {
+		{ScenarioInfo: ScenarioInfo{Key: "public_bucket", Label: "Make the marketing bucket public", Description: "Disables Block Public Access on <org>-marketing-assets and grants public read."}, apply: func(r map[string]any, slug string) {
 			if b := find(r, "s3_bucket", slug+"-marketing-assets"); b != nil {
 				b["public_access_block"] = map[string]any{"block_public_acls": false, "ignore_public_acls": false, "block_public_policy": false, "restrict_public_buckets": false}
 				b["public"] = true
 			}
 		}},
-		{ScenarioInfo{"cloudtrail_off", "Stop CloudTrail logging", "Stops logging on the organization trail."}, func(r map[string]any, _ string) {
+		{ScenarioInfo: ScenarioInfo{Key: "cloudtrail_off", Label: "Stop CloudTrail logging", Description: "Stops logging on the organization trail."}, apply: func(r map[string]any, _ string) {
 			for _, t := range all(r, "cloudtrail_trail") {
 				t["is_logging"] = false
 			}
 		}},
-		{ScenarioInfo{"open_ssh", "Open SSH to the internet", "Adds 0.0.0.0/0 on port 22 to the bastion security group."}, func(r map[string]any, _ string) {
+		{ScenarioInfo: ScenarioInfo{Key: "open_ssh", Label: "Open SSH to the internet", Description: "Adds 0.0.0.0/0 on port 22 to the bastion security group."}, apply: func(r map[string]any, _ string) {
 			if g := find(r, "security_group", "sg-0aa3"); g != nil {
 				g["open_ssh"] = true
 				g["ingress"] = []any{map[string]any{"from_port": 22, "to_port": 22, "cidr": "0.0.0.0/0"}}
 			}
 		}},
-		{ScenarioInfo{"rds_public", "Expose the production database", "Makes prod-postgres publicly accessible."}, func(r map[string]any, _ string) {
+		{ScenarioInfo: ScenarioInfo{Key: "rds_public", Label: "Expose the production database", Description: "Makes prod-postgres publicly accessible."}, apply: func(r map[string]any, _ string) {
 			if d := find(r, "rds_instance", "prod-postgres"); d != nil {
 				d["publicly_accessible"] = true
 			}
 		}},
-		{ScenarioInfo{"fix_baseline", "Remediate the baseline gaps", "Enables MFA for every console user, rotates old keys, enables access logging and Multi-AZ."}, func(r map[string]any, _ string) {
+		{ScenarioInfo: ScenarioInfo{Key: "fix_baseline", Label: "Remediate the baseline gaps", Description: "Enables MFA for every console user, rotates old keys, enables access logging and Multi-AZ."}, apply: func(r map[string]any, _ string) {
 			for _, u := range all(r, "iam_user") {
 				if u["console_access"] == true {
 					u["mfa_enabled"] = true
@@ -346,12 +437,12 @@ var scenarios = map[string][]scenario{
 		}},
 	},
 	"github": {
-		{ScenarioInfo{"unprotect_api", "Remove branch protection on api", "Disables branch protection on the api repository's default branch."}, func(r map[string]any, slug string) {
+		{ScenarioInfo: ScenarioInfo{Key: "unprotect_api", Label: "Remove branch protection on api", Description: "Disables branch protection on the api repository's default branch."}, apply: func(r map[string]any, slug string) {
 			if repo := find(r, "repository", slug+"/api"); repo != nil {
 				repo["branch_protection"] = map[string]any{"enabled": false, "required_approving_reviews": 0, "dismiss_stale_reviews": false, "require_code_owner_reviews": false, "enforce_admins": false, "required_status_checks": false, "allow_force_pushes": true}
 			}
 		}},
-		{ScenarioInfo{"disable_2fa_requirement", "Stop requiring 2FA", "Turns off the organization's 2FA requirement and a member disables 2FA."}, func(r map[string]any, _ string) {
+		{ScenarioInfo: ScenarioInfo{Key: "disable_2fa_requirement", Label: "Stop requiring 2FA", Description: "Turns off the organization's 2FA requirement and a member disables 2FA."}, apply: func(r map[string]any, _ string) {
 			for _, o := range all(r, "organization") {
 				o["two_factor_required"] = false
 			}
@@ -359,7 +450,7 @@ var scenarios = map[string][]scenario{
 				ms[len(ms)-1]["two_factor_enabled"] = false
 			}
 		}},
-		{ScenarioInfo{"fix_baseline", "Resolve Dependabot alerts", "Closes the open critical Dependabot alerts."}, func(r map[string]any, _ string) {
+		{ScenarioInfo: ScenarioInfo{Key: "fix_baseline", Label: "Resolve Dependabot alerts", Description: "Closes the open critical Dependabot alerts."}, apply: func(r map[string]any, _ string) {
 			for _, repo := range all(r, "repository") {
 				repo["dependabot_open_critical"] = 0
 				repo["dependabot_open_critical_overdue"] = 0
@@ -367,13 +458,13 @@ var scenarios = map[string][]scenario{
 		}},
 	},
 	"gcp": {
-		{ScenarioInfo{"public_gcs", "Make the datasets bucket public", "Grants allUsers read on the ML datasets bucket."}, func(r map[string]any, slug string) {
+		{ScenarioInfo: ScenarioInfo{Key: "public_gcs", Label: "Make the datasets bucket public", Description: "Grants allUsers read on the ML datasets bucket."}, apply: func(r map[string]any, slug string) {
 			if b := find(r, "gcs_bucket", slug+"-ml-datasets"); b != nil {
 				b["public"] = true
 				b["uniform_access"] = false
 			}
 		}},
-		{ScenarioInfo{"fix_baseline", "Replace primitive owner role", "Replaces the user-level owner binding with a predefined role."}, func(r map[string]any, _ string) {
+		{ScenarioInfo: ScenarioInfo{Key: "fix_baseline", Label: "Replace primitive owner role", Description: "Replaces the user-level owner binding with a predefined role."}, apply: func(r map[string]any, _ string) {
 			for _, b := range all(r, "iam_binding") {
 				if b["primitive_role"] == true {
 					b["role"] = "roles/resourcemanager.projectIamAdmin"
@@ -383,7 +474,7 @@ var scenarios = map[string][]scenario{
 		}},
 	},
 	"okta": {
-		{ScenarioInfo{"mfa_optional", "Make MFA optional", "Sets the sign-on policy to not require MFA and un-enrolls one user."}, func(r map[string]any, _ string) {
+		{ScenarioInfo: ScenarioInfo{Key: "mfa_optional", Label: "Make MFA optional", Description: "Sets the sign-on policy to not require MFA and un-enrolls one user."}, apply: func(r map[string]any, _ string) {
 			for _, p := range all(r, "policy") {
 				p["mfa_required"] = false
 			}
@@ -392,7 +483,7 @@ var scenarios = map[string][]scenario{
 				us[2]["factors"] = []any{}
 			}
 		}},
-		{ScenarioInfo{"fix_baseline", "Deactivate dormant accounts", "Deprovisions users inactive for more than 90 days."}, func(r map[string]any, _ string) {
+		{ScenarioInfo: ScenarioInfo{Key: "fix_baseline", Label: "Deactivate dormant accounts", Description: "Deprovisions users inactive for more than 90 days."}, apply: func(r map[string]any, _ string) {
 			for _, u := range all(r, "user") {
 				if d, ok := u["last_login_days"].(float64); ok && d > 90 {
 					u["status"] = "DEPROVISIONED"
@@ -401,12 +492,12 @@ var scenarios = map[string][]scenario{
 		}},
 	},
 	"google_workspace": {
-		{ScenarioInfo{"two_step_off", "Stop enforcing 2-Step Verification", "Turns off 2SV enforcement for the domain."}, func(r map[string]any, _ string) {
+		{ScenarioInfo: ScenarioInfo{Key: "two_step_off", Label: "Stop enforcing 2-Step Verification", Description: "Turns off 2SV enforcement for the domain."}, apply: func(r map[string]any, _ string) {
 			for _, d := range all(r, "domain") {
 				d["two_step_enforced"] = false
 			}
 		}},
-		{ScenarioInfo{"fix_baseline", "Revoke the unverified app", "Revokes access for unverified apps with high-risk scopes."}, func(r map[string]any, _ string) {
+		{ScenarioInfo: ScenarioInfo{Key: "fix_baseline", Label: "Revoke the unverified app", Description: "Revokes access for unverified apps with high-risk scopes."}, apply: func(r map[string]any, _ string) {
 			list, _ := r["oauth_grant"].([]any)
 			var keep []any
 			for _, g := range list {
@@ -419,12 +510,12 @@ var scenarios = map[string][]scenario{
 		}},
 	},
 	"hris": {
-		{ScenarioInfo{"missing_manager", "Remove a manager assignment", "Clears the manager of one employee."}, func(r map[string]any, _ string) {
+		{ScenarioInfo: ScenarioInfo{Key: "missing_manager", Label: "Remove a manager assignment", Description: "Clears the manager of one employee."}, apply: func(r map[string]any, _ string) {
 			if es := all(r, "employee"); len(es) > 3 {
 				es[3]["manager_email"] = ""
 			}
 		}},
-		{ScenarioInfo{"fix_baseline", "Complete pending background checks", "Marks pending background checks as completed."}, func(r map[string]any, _ string) {
+		{ScenarioInfo: ScenarioInfo{Key: "fix_baseline", Label: "Complete pending background checks", Description: "Marks pending background checks as completed."}, apply: func(r map[string]any, _ string) {
 			for _, e := range all(r, "employee") {
 				if e["background_check"] == "pending" {
 					e["background_check"] = "completed"
@@ -435,6 +526,9 @@ var scenarios = map[string][]scenario{
 }
 
 func scenarioInfo(typ string) []ScenarioInfo {
+	if typ == "trustline" {
+		return nil
+	}
 	var out []ScenarioInfo
 	for _, s := range scenarios[typ] {
 		out = append(out, s.ScenarioInfo)
@@ -458,12 +552,21 @@ func ApplyScenarios(typ, orgSlug string, active []string) (map[string]any, error
 	_ = json.Unmarshal(raw, &state)
 	res, _ := state["resources"].(map[string]any)
 	var applied []any
+	// Hires first so per-person scenarios can target new employees.
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return strings.HasPrefix(sorted[i], "hire") && !strings.HasPrefix(sorted[j], "hire")
+	})
 	for _, k := range sorted {
-		s, ok := known[k]
-		if !ok {
+		key, param, perPerson := strings.Cut(k, ":")
+		s, ok := known[key]
+		if !ok || s.PerPerson != perPerson || (perPerson && !strings.Contains(param, "@")) {
 			return nil, fmt.Errorf("unknown scenario %q for %s", k, typ)
 		}
-		s.apply(res, orgSlug)
+		if perPerson {
+			s.applyFor(res, orgSlug, strings.ToLower(param))
+		} else {
+			s.apply(res, orgSlug)
+		}
 		applied = append(applied, k)
 	}
 	if applied == nil {

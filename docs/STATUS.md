@@ -56,8 +56,30 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏸ deferred (reason in D
 | Cross-tenant tests for all Phase 1 endpoints | ✅ | `TestPhase1TenantIsolation` |
 | Seed: Acme with SOC 2 + ISO 27001, 5 integrations, passing and failing controls, owners, evidence | ✅ | |
 
-## Phase 2 — Policies, Personnel, Access reviews
-⬜ not started
+## Phase 2 — Policies, Personnel, Access reviews (Modules 3, 6, 7)
+
+| Item | Status | Notes |
+|---|---|---|
+| Policy library: 22 templates (InfoSec, Access Control, Password, Acceptable Use, Incident Response, BCP/DR, Vendor, Data Retention, Change, Risk, AI Acceptable Use, Encryption, Asset, Secure Development, Logging, Vulnerability, Physical, Data Classification, HR Security, Code of Conduct, Privacy, Network) | ✅ | placeholders filled from org settings |
+| Rich-text editor (TipTap), sanitized HTML storage | ✅ | |
+| Versioning + approval workflow (draft → review → approve/reject → publish → superseded) | ✅ | approver or admin decides |
+| Annual review reminders (daily job, task + notification), mark reviewed | ✅ | |
+| Employee acknowledgement per version, tasks, My work | ✅ | |
+| AI policy draft from org context | ✅ | `policy_draft.v1` |
+| AI policy ↔ settings inconsistency detection (on demand and after publish) | ✅ | `policy_consistency.v1` |
+| Acceptance: publish v2 → staff get acknowledgement tasks → GOV-05 fails until threshold | ✅ | Go `TestPolicyPublishAcknowledgementFlow`, E2E `07-policies` |
+| HRIS sync → people, onboarding checklist (account, policies, training, device, background) | ✅ | auto-verified items, new-hire email invite |
+| Offboarding: per-system removal tasks verified by sync, SLA 1 business day, Trustline access removed immediately | ✅ | |
+| Acceptance: terminate in HRIS → offboarding → "access revoked" fails until Okta deactivation | ✅ | Go `TestOffboardingVerifiedByIdentityProvider`, E2E `08-personnel` |
+| Built-in security awareness course + quiz + completion records, annual renewal tasks | ✅ | |
+| Device agent endpoint + enrollment token + agent script (macOS/Linux/Windows) | ✅ | disk encryption, screen lock, anti-malware tests |
+| Background check attestation | ✅ | |
+| Access review campaigns: pull users/roles per integration, manager reviewers, keep/revoke, verified revocation tasks, CSV export as IAM-04 evidence, scheduled campaigns | ✅ | Go `TestAccessReviewCampaign`, E2E `09-access-reviews` |
+| Platform connector: policy/person/device/access-review tests on the rule engine (18 tests) | ✅ | |
+| Cross-tenant tests for Phase 2 endpoints | ✅ | `TestPhase2TenantIsolation` |
+| Linked policies on the control detail page | 🟡 | policies list the controls they support; showing them on the control page is a small follow-up |
+| SCIM / CSV HRIS import | ⏸ | BambooHR-style sandbox connector covers the flow; CSV/SCIM import with the live clients in Phase 6 |
+| MDM integrations (Jamf, Intune, Kandji) | ⏸ | the agent endpoint covers device compliance; MDM API connectors in Phase 6 |
 
 ## Phase 3 — Risk, Vendors
 ⬜ not started

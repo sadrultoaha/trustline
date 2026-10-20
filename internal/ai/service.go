@@ -18,7 +18,9 @@ import (
 //go:embed prompts/*.tmpl
 var promptFS embed.FS
 
-var prompts = template.Must(template.New("").ParseFS(promptFS, "prompts/*.tmpl"))
+var funcs = template.FuncMap{"join": strings.Join}
+
+var prompts = template.Must(template.New("").Funcs(funcs).ParseFS(promptFS, "prompts/*.tmpl"))
 
 // pricing per million tokens (input, output) for cost logging.
 var pricing = map[string][2]float64{
@@ -71,6 +73,10 @@ func (s *Service) Enabled(ctx context.Context, orgID domain.ID) (bool, error) {
 }
 
 func (s *Service) run(ctx context.Context, orgID domain.ID, req Request, out any) error {
+	return s.runRaw(ctx, orgID, req, out)
+}
+
+func (s *Service) runRaw(ctx context.Context, orgID domain.ID, req Request, out any) error {
 	ok, err := s.Enabled(ctx, orgID)
 	if err != nil {
 		return err

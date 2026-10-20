@@ -64,12 +64,12 @@ test('new org: connect AWS → add second framework (crosswalk readiness) → ev
   await expect(page.getByTestId('evidence-override')).toContainText('accepted')
   await expect(page.getByTestId('control-status').first()).toHaveAttribute('data-status', 'passing', { timeout: 10_000 })
 
-  // A relevant file passes AI review on the MFA control's evidence.
+  // A relevant file passes AI review on a manual control.
   await page.getByTestId('nav-controls').click()
-  await page.getByTestId('controls-search').fill('IAM-04')
-  await page.getByTestId('control-row-IAM-04').getByRole('link').click()
+  await page.getByTestId('controls-search').fill('GOV-02')
+  await page.getByTestId('control-row-GOV-02').getByRole('link').click()
   await page.getByTestId('evidence-upload-open').click()
-  await page.getByTestId('evidence-file').setInputFiles({ name: 'q3-user-access-review.txt', mimeType: 'text/plain', buffer: Buffer.from('Q3 2026 user access review: 42 accounts recertified by managers, 3 revoked.') })
+  await page.getByTestId('evidence-file').setInputFiles({ name: 'security-roles.txt', mimeType: 'text/plain', buffer: Buffer.from('Security roles and responsibilities: Ada Lovelace is the designated security officer (CISO).') })
   await page.getByTestId('evidence-submit').click()
   await expect(page.getByTestId('evidence-ai-verdict')).toHaveText('Satisfies control', { timeout: 30_000 })
   await expect(page.getByTestId('control-status').first()).toHaveAttribute('data-status', 'passing')

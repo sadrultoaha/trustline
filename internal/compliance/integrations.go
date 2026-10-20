@@ -68,6 +68,9 @@ func (s *Service) ListTypes(ctx context.Context, orgID domain.ID) ([]Integration
 	}
 	var out []IntegrationType
 	for _, c := range s.Catalog.Connectors {
+		if c.Internal {
+			continue
+		}
 		reg := connectors.Types[c.Type]
 		it := IntegrationType{Connector: c, Credentials: reg.Credentials, LiveReady: reg.LiveReady, Scenarios: reg.Scenarios, TestCount: counts[c.Type]}
 		if id, ok := connected[c.Type]; ok {
@@ -104,7 +107,7 @@ func scanIntegration(row pgx.Row) (*Integration, error) {
 }
 
 func (s *Service) ListIntegrations(ctx context.Context, orgID domain.ID) ([]Integration, error) {
-	rows, err := s.Pool.Query(ctx, integrationSelect+` WHERE i.org_id = $1 ORDER BY i.created_at`, orgID)
+	rows, err := s.Pool.Query(ctx, integrationSelect+` WHERE i.org_id = $1 ORDER BY i.mode = 'platform', i.created_at`, orgID)
 	if err != nil {
 		return nil, err
 	}
@@ -135,6 +138,9 @@ type ConnectInput struct {
 // for the controls in scope and enqueues the first sync.
 func (s *Service) Connect(ctx context.Context, orgID domain.ID, in ConnectInput, actor domain.Actor) (*Integration, error) {
 	v := domain.NewValidation()
+	if def := s.Catalog.ConnectorDef(in.Type); def != nil && def.Internal {
+		return nil, domain.Invalid("type", "this integration is built in and always connected")
+	}
 	for k, msg := range connectors.ValidateCredentials(in.Type, in.Credentials) {
 		v.Add(k, msg)
 	}
@@ -194,6 +200,9 @@ func (s *Service) Connect(ctx context.Context, orgID domain.ID, in ConnectInput,
 			}
 			return err
 		}
+		if err := s.ensurePlatform(ctx, tx, orgID); err != nil {
+			return err
+		}
 		created, err := s.ensureTests(ctx, tx, orgID)
 		if err != nil {
 			return err
@@ -220,6 +229,9 @@ func (s *Service) Disconnect(ctx context.Context, orgID, id domain.ID, actor dom
 				return domain.ErrNotFound
 			}
 			return err
+		}
+		if typ == "trustline" {
+			return domain.Invalid("integration", "the Trustline platform integration is built in and cannot be disconnected")
 		}
 		var affected []domain.ID
 		rows, err := tx.Query(ctx, `UPDATE tests SET enabled = false, last_status = 'pending', updated_at = now() WHERE org_id = $1 AND integration_type = $2 AND enabled RETURNING control_id`, orgID, typ)
@@ -266,8 +278,9 @@ func (s *Service) RequestSync(ctx context.Context, orgID, id domain.ID, actor do
 	})
 }
 
-// SyncIntegration runs a connector, stores the snapshot and enqueues test runs.
-// Called by the sync worker.
+// SyncIntegration runs a connector (or builds the platform snapshot), stores
+// the snapshot, applies side effects (people sync, task reconciliation) and
+// enqueues test runs. Called by the sync worker.
 func (s *Service) SyncIntegration(ctx context.Context, orgID, id domain.ID, trigger string) (*domain.ID, error) {
 	var typ, mode string
 	var credsEnc, state []byte
@@ -283,38 +296,64 @@ func (s *Service) SyncIntegration(ctx context.Context, orgID, id domain.ID, trig
 		_, _ = s.Pool.Exec(ctx, `UPDATE integrations SET status = 'error', last_error = $3, updated_at = now() WHERE org_id = $1 AND id = $2`, orgID, id, err.Error())
 		return nil, err
 	}
-	var creds map[string]string
-	if err := s.Box.OpenJSON(credsEnc, id[:], &creds); err != nil {
-		return fail(fmt.Errorf("credentials unreadable: %w", err))
+	var resources map[string][]map[string]any
+	var people []personFacts
+	var pols []policyFacts
+	takenAt := time.Now().UTC()
+	if mode == string(connectors.ModePlatform) {
+		resources, people, pols, err = s.buildPlatformSnapshot(ctx, s.Pool, orgID)
+		if err != nil {
+			return fail(err)
+		}
+	} else {
+		var creds map[string]string
+		if err := s.Box.OpenJSON(credsEnc, id[:], &creds); err != nil {
+			return fail(fmt.Errorf("credentials unreadable: %w", err))
+		}
+		var st map[string]any
+		if len(state) > 0 {
+			_ = json.Unmarshal(state, &st)
+		}
+		conn, err := connectors.Build(typ, connectors.Mode(mode), creds, st)
+		if err != nil {
+			return fail(err)
+		}
+		cctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+		defer cancel()
+		snap, err := conn.Sync(cctx)
+		if err != nil {
+			return fail(err)
+		}
+		resources, takenAt = snap.Resources, snap.TakenAt
 	}
-	var st map[string]any
-	if len(state) > 0 {
-		_ = json.Unmarshal(state, &st)
-	}
-	conn, err := connectors.Build(typ, connectors.Mode(mode), creds, st)
+	data, err := json.Marshal(resources)
 	if err != nil {
 		return fail(err)
 	}
-	cctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
-	defer cancel()
-	snap, err := conn.Sync(cctx)
-	if err != nil {
-		return fail(err)
-	}
-	data, err := json.Marshal(snap.Resources)
-	if err != nil {
-		return fail(err)
+	count := 0
+	for _, r := range resources {
+		count += len(r)
 	}
 	sum := sha256.Sum256(data)
 	snapID := domain.NewID()
 	err = db.Tx(ctx, s.Pool, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `INSERT INTO snapshots (id, org_id, integration_id, connector, taken_at, resource_count, sha256, data) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-			snapID, orgID, id, typ, snap.TakenAt, snap.Count(), hex.EncodeToString(sum[:]), data); err != nil {
+			snapID, orgID, id, typ, takenAt, count, hex.EncodeToString(sum[:]), data); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `UPDATE integrations SET status = 'connected', last_sync_at = $3, last_error = '', resource_count = $4, updated_at = now() WHERE org_id = $1 AND id = $2`,
-			orgID, id, snap.TakenAt, snap.Count()); err != nil {
+			orgID, id, takenAt, count); err != nil {
 			return err
+		}
+		switch typ {
+		case "hris":
+			if err := s.syncPeople(ctx, tx, orgID, resources["employee"]); err != nil {
+				return fmt.Errorf("people sync: %w", err)
+			}
+		case "trustline":
+			if err := s.reconcile(ctx, tx, orgID, people, pols); err != nil {
+				return fmt.Errorf("reconcile: %w", err)
+			}
 		}
 		return s.Jobs.EnqueueTx(ctx, tx, jobs.RunTestsArgs{OrgID: orgID.String(), SnapshotID: snapID.String(), Trigger: trigger})
 	})
@@ -326,6 +365,7 @@ func (s *Service) SyncIntegration(ctx context.Context, orgID, id domain.ID, trig
 
 type SnapshotView struct {
 	ID            domain.ID                   `json:"id"`
+	IntegrationID *domain.ID                  `json:"integration_id,omitempty"`
 	Connector     string                      `json:"connector"`
 	TakenAt       time.Time                   `json:"taken_at"`
 	ResourceCount int                         `json:"resource_count"`
@@ -344,8 +384,8 @@ func (s *Service) GetSnapshot(ctx context.Context, orgID, snapshotID domain.ID) 
 func (s *Service) snapshot(ctx context.Context, where string, args ...any) (*SnapshotView, error) {
 	var v SnapshotView
 	var data []byte
-	err := s.Pool.QueryRow(ctx, `SELECT id, connector, taken_at, resource_count, sha256, data FROM snapshots `+where, args...).
-		Scan(&v.ID, &v.Connector, &v.TakenAt, &v.ResourceCount, &v.SHA256, &data)
+	err := s.Pool.QueryRow(ctx, `SELECT id, integration_id, connector, taken_at, resource_count, sha256, data FROM snapshots `+where, args...).
+		Scan(&v.ID, &v.IntegrationID, &v.Connector, &v.TakenAt, &v.ResourceCount, &v.SHA256, &data)
 	if err != nil {
 		if db.IsNoRows(err) {
 			return nil, domain.ErrNotFound

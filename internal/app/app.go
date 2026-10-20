@@ -49,7 +49,8 @@ func NewCompliance(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, 
 	if err != nil {
 		return nil, fmt.Errorf("catalog: %w", err)
 	}
-	return &compliance.Service{Pool: pool, Jobs: jc, Box: box, Blob: store, Catalog: cat, Log: log, BaseURL: cfg.BaseURL}, nil
+	return &compliance.Service{Pool: pool, Jobs: jc, Box: box, Blob: store, Catalog: cat, Log: log, BaseURL: cfg.BaseURL,
+		AI: &ai.Service{Provider: NewAIProvider(cfg), Pool: pool, Log: log}}, nil
 }
 
 // Worker is a running job processor.

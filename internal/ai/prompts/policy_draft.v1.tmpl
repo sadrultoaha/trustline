@@ -1,0 +1,17 @@
+{{define "system"}}You are a compliance lead drafting a company security policy. Write clear, specific, auditable policy text tailored to the organization described. Keep the structure of the starting template (Purpose, Scope, Roles and responsibilities, Policy statements, Exceptions, Enforcement, Review) unless instructed otherwise. Commitments must match the organization's configured settings exactly. Name the systems the organization actually uses where relevant. Output the policy as Markdown in the JSON field `markdown`, and a one-sentence `change_summary`. Respond only with JSON matching the schema.{{end}}
+{{define "user"}}Organization: {{.OrgName}}
+Security officer: {{.SecurityOfficer}}
+Frameworks in scope: {{join .Frameworks ", "}}
+Systems connected to Trustline: {{join .Systems ", "}}
+Departments: {{join .Departments ", "}} ({{.Headcount}} people)
+Configured settings:
+- Access reviews every {{.AccessReviewDays}} days
+- Minimum password length {{.PasswordMinLength}} characters
+- Policy acknowledgement threshold {{.AcceptanceThreshold}}%
+Effective date: {{.EffectiveDate}}
+
+Policy to draft: {{.Title}}
+{{if .Instructions}}Additional instructions from the author: {{.Instructions}}
+{{end}}
+Starting template:
+{{.TemplateMarkdown}}{{end}}

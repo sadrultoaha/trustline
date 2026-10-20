@@ -1,0 +1,98 @@
+id: security-awareness-2026
+title: Security Awareness Essentials
+description: Twenty minutes on the threats that actually hit companies like ours, and what you do about them.
+passing_score: 80
+valid_days: 365
+modules:
+  - title: Why this matters
+    body: |
+      Most breaches start with a person, not a zero-day. A convincing email, a reused password or an unlocked laptop
+      gives an attacker the same access you have. Our customers trust us with their data; protecting it is part of
+      everyone's job, not just the security team's.
+
+      You will learn to spot phishing, protect your accounts and devices, handle data correctly, and report
+      incidents quickly. There is a short quiz at the end; you need 80% to pass.
+  - title: Phishing and social engineering
+    body: |
+      Phishing messages create urgency ("your account will be closed"), impersonate someone you trust (a
+      manager, IT, a vendor) or offer something unexpected. Before you click or reply:
+
+      - Check the real sender address and the link target (hover before clicking).
+      - Be suspicious of requests to change payment details, buy gift cards or share codes.
+      - Verify unusual requests through a separate channel you already trust.
+      - Never enter your password on a page you reached from an email link.
+
+      If you clicked something suspicious, report it immediately in #security. Fast reports limit damage; nobody
+      gets in trouble for reporting.
+  - title: Passwords and multi-factor authentication
+    body: |
+      Use the company password manager to generate a unique, long password for every account. Never reuse your
+      work password anywhere else.
+
+      Multi-factor authentication (MFA) is required on every company system. Prefer phishing-resistant factors
+      such as security keys or passkeys. Never approve an MFA prompt you did not start — that is an attacker
+      trying your password.
+  - title: Devices and working remotely
+    body: |
+      Your laptop must have full-disk encryption, an automatic screen lock of 15 minutes or less, current
+      updates and anti-malware running. The Trustline agent checks this automatically.
+
+      Lock your screen whenever you step away. Avoid public Wi-Fi without the VPN. Report lost or stolen devices
+      immediately so they can be wiped.
+  - title: Handling data
+    body: |
+      Classify data before you share it: Public, Internal, Confidential or Restricted. Customer data is at least
+      Confidential. Share only with people who need it, through approved tools — never personal email, personal
+      cloud storage or unapproved AI tools.
+
+      Do not paste customer data, credentials or source code into generative AI tools unless the tool is
+      approved for that data class.
+  - title: Reporting incidents
+    body: |
+      A security incident is anything that might put data or systems at risk: a suspicious email you clicked, a
+      lost laptop, data sent to the wrong person, or odd behaviour on your machine. Report it right away in
+      #security or to security@ — within minutes, not days. Do not try to investigate or clean up yourself.
+questions:
+  - id: q1
+    question: You get an email from "IT Support" asking you to confirm your password via a link because your mailbox is full. What do you do?
+    options: [Click the link and confirm quickly, Reply with your password, Report it as phishing without clicking, Forward it to a colleague to check]
+    answer: 2
+    explanation: IT never asks for your password. Report it so others are protected.
+  - id: q2
+    question: Your phone shows an MFA push you did not trigger. What does it most likely mean?
+    options: [The system is being tested, Someone has your password and is trying to log in, Your session expired, Nothing important]
+    answer: 1
+    explanation: Deny it and report it — then change your password.
+  - id: q3
+    question: Which password practice is correct?
+    options: [Reuse one strong password everywhere, Write passwords on a sticky note, Use the password manager to generate a unique password per account, Share your password with your manager when asked]
+    answer: 2
+  - id: q4
+    question: What is the maximum automatic screen-lock time for company laptops?
+    options: [5 minutes, 15 minutes, 60 minutes, Screen lock is optional]
+    answer: 1
+  - id: q5
+    question: A customer's data export needs to reach a colleague. How should you share it?
+    options: [Personal email, Public file-sharing link, The approved company file share restricted to that colleague, A USB stick]
+    answer: 2
+  - id: q6
+    question: Which data may be pasted into an unapproved generative AI chatbot?
+    options: [Customer records, Source code, API keys, Public marketing copy]
+    answer: 3
+  - id: q7
+    question: You realise you sent a spreadsheet with personal data to the wrong recipient. What now?
+    options: [Do nothing and hope they delete it, Report it to security immediately, Wait until the end of the week, Ask the recipient to forward it back]
+    answer: 1
+    explanation: Personal data breaches may need regulator notification within 72 hours, so speed matters.
+  - id: q8
+    question: Your laptop was stolen from a car. What is the first step?
+    options: [Buy a new one, Report it to security immediately so it can be locked and wiped, Wait to see if it turns up, Change your desktop wallpaper]
+    answer: 1
+  - id: q9
+    question: A "vendor" emails asking to update their bank details for the next invoice. What do you do?
+    options: [Update them, Verify by calling the vendor on a number you already have, Reply asking for confirmation, Forward to finance without comment]
+    answer: 1
+  - id: q10
+    question: Which factor is most resistant to phishing?
+    options: [SMS code, Security key or passkey, Email code, Security questions]
+    answer: 1

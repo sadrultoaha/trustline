@@ -150,3 +150,18 @@ func TestValidation(t *testing.T) {
 		t.Error("expected unknown field error")
 	}
 }
+
+func TestRequireResources(t *testing.T) {
+	r := mustParse(t, `{"resource":"person","quantifier":"all","require_resources":true,"assert":{"field":"a","op":"eq","value":1}}`)
+	if got := r.Evaluate(nil); got.Status != "na" {
+		t.Fatalf("expected na, got %+v", got)
+	}
+	if got := r.Evaluate([]Resource{{"id": "x", "a": 1.0}}); got.Status != "pass" {
+		t.Fatalf("expected pass, got %+v", got)
+	}
+	// Filtered-to-empty is still a pass: the population exists.
+	w := mustParse(t, `{"resource":"person","quantifier":"all","require_resources":true,"where":{"field":"status","op":"eq","value":"terminated"},"assert":{"field":"a","op":"eq","value":1}}`)
+	if got := w.Evaluate([]Resource{{"id": "x", "status": "active"}}); got.Status != "pass" {
+		t.Fatalf("expected pass, got %+v", got)
+	}
+}

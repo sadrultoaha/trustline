@@ -103,3 +103,43 @@ adaptive thinking. The fake provider is the default (`AI_MODE=fake`) so the full
 `SyncIntegration` uses River unique jobs keyed by args across available/pending/running/
 scheduled/retryable states, so a slow sync and a scheduler tick never stack up. A sandbox change
 made while a sync is running is picked up by the next tick.
+
+## 2026-10-20 — A built-in "trustline" connector instead of bespoke checks
+Policy acknowledgement, training, devices, offboarding and access-review cadence are evaluated by
+the same rule engine as cloud checks, over a snapshot built from Trustline's own data. One
+mechanism gives them run history, frozen evidence, remediation tasks, notifications and the
+custom test builder for free. The connector is internal: it is not listed for connecting and
+cannot be disconnected.
+
+## 2026-10-20 — Tests can be "not applicable"
+`all` over zero resources is a vacuous pass. That is right for "every bucket blocks public
+access" but wrong for "everyone completed training" in an org with no HR data yet. Rules can set
+`require_resources`; with no resources the result is `na`, which does not decide the control. All
+platform people/device/policy tests use it.
+
+## 2026-10-20 — HRIS-driven lifecycle
+The first HRIS import never starts onboarding for existing staff (only hires from the last 30
+days) and never offboards existing leavers. Later changes do: new hires get a checklist and an
+email invite; terminations get one verified removal task per connected identity system and lose
+Trustline access immediately. A reactivation dismisses open offboarding tasks but does not restore
+Trustline access automatically — re-inviting is a deliberate admin action.
+
+## 2026-10-20 — The identity provider for "access revoked" is Okta when connected
+`idp_active` follows Okta when Okta is connected, otherwise Google Workspace. Separate tests cover
+Google Workspace suspension, GitHub removal and AWS IAM users, so an org sees each remaining
+system explicitly.
+
+## 2026-10-20 — Acknowledgement audience = admins, editors and employees
+Auditors are excluded. The policy-acknowledged test passes when, for every published policy, the
+acknowledged share reaches the org's threshold (default 90%). A second test requires every
+active person with an account to acknowledge every policy, so a stragglers list is always visible.
+
+## 2026-10-20 — Platform syncs are not de-duplicated
+Unique jobs drop an insert while a matching job is running, which lost changes made mid-sync.
+Platform syncs are cheap, so every change enqueues one; test runs skip any snapshot older than the
+latest for the same integration.
+
+## 2026-10-20 — Access-review reviewers come from the HRIS manager
+Each account is assigned to the account owner's manager when the manager has a Trustline account,
+otherwise to the campaign creator. Admins and editors can decide any item; other members only
+their own.

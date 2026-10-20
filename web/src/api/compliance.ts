@@ -2,7 +2,7 @@ import { keepPreviousData, queryOptions, useMutation, useQueryClient } from '@ta
 import { ApiError, api } from './client'
 
 export type ControlStatus = 'passing' | 'failing' | 'needs_evidence'
-export type TestStatus = 'pending' | 'pass' | 'fail' | 'error'
+export type TestStatus = 'pending' | 'pass' | 'fail' | 'error' | 'na'
 export type Severity = 'low' | 'medium' | 'high' | 'critical'
 
 export interface Readiness {
@@ -163,6 +163,10 @@ export interface TaskRow {
   completed_at?: string
   created_at: string
   overdue: boolean
+  person_id?: string
+  person_name: string
+  item_key: string
+  meta: Record<string, unknown>
 }
 export interface MappedRequirement {
   framework_id: string
@@ -191,6 +195,7 @@ export interface ScenarioInfo {
   key: string
   label: string
   description: string
+  per_person: boolean
 }
 export interface SchemaField {
   path: string
@@ -272,6 +277,7 @@ export interface Rule {
   max?: number
   where?: Expr
   assert: Expr
+  require_resources?: boolean
 }
 export interface RuleResult {
   status: 'pass' | 'fail'

@@ -2,6 +2,7 @@
 package httpapi
 
 import (
+	_ "embed"
 	"log/slog"
 	"net/http"
 	"os"
@@ -21,6 +22,9 @@ import (
 	"github.com/trustline/trustline/internal/org"
 	"github.com/trustline/trustline/internal/ratelimit"
 )
+
+//go:embed static/trustline-agent.sh
+var agentScript []byte
 
 // Server holds dependencies shared by handlers.
 type Server struct {
@@ -87,6 +91,10 @@ func (s *Server) Handler() http.Handler {
 	r.Use(securityHeaders)
 
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, map[string]string{"status": "ok"}) })
+	r.Get("/agent/trustline-agent.sh", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/x-shellscript; charset=utf-8")
+		_, _ = w.Write(agentScript)
+	})
 	r.Get("/readyz", s.ready)
 
 	// OAuth browser redirects live outside /api so they are plain GETs.
@@ -104,6 +112,9 @@ func (s *Server) Handler() http.Handler {
 		api.Post("/auth/forgot-password", s.forgotPassword)
 		api.Post("/auth/reset-password", s.resetPassword)
 		api.Get("/invites/{token}", s.invitePreview)
+		if s.comp != nil {
+			api.Post("/agent/report", s.agentReport)
+		}
 		api.Post("/invites/{token}/accept", s.inviteAccept)
 
 		api.Group(func(authed chi.Router) {
@@ -134,6 +145,7 @@ func (s *Server) Handler() http.Handler {
 				t.With(s.require(permActivityRead)).Get("/activity", s.listActivity)
 				if s.comp != nil {
 					s.mountCompliance(t)
+					s.mountPhase2(t)
 				}
 				for _, m := range s.modules {
 					m(t)

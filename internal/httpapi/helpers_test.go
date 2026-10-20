@@ -37,7 +37,7 @@ func inviteTokens(t *testing.T, app *testutil.App) map[string]string {
 	t.Helper()
 	out := map[string]string{}
 	for _, j := range pendingEmailJobs(t, app) {
-		if strings.Contains(j.Subject, "Join ") {
+		if strings.Contains(j.Text, "/invite/") {
 			out[j.To] = extractParam(j.Text, "/invite/")
 		}
 	}

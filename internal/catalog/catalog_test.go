@@ -17,6 +17,9 @@ func TestCatalogLoads(t *testing.T) {
 	if len(c.Controls) < 80 {
 		t.Errorf("expected >= 80 controls, got %d", len(c.Controls))
 	}
+	if len(c.Training) == 0 || len(c.Training[0].Questions) < 5 {
+		t.Errorf("training course missing")
+	}
 	if len(c.Tests) < 110 {
 		t.Errorf("expected >= 110 tests, got %d", len(c.Tests))
 	}
@@ -67,6 +70,9 @@ func TestTestsAgainstSandboxBaselines(t *testing.T) {
 	c := MustLoad()
 	pass, fail := map[string]int{}, map[string]int{}
 	for _, conn := range c.Connectors {
+		if conn.Internal {
+			continue // platform data is covered by compliance integration tests
+		}
 		snap := snapshotFor(t, conn.Type)
 		for _, rt := range conn.Resources {
 			if len(snap[rt.Type]) == 0 {
@@ -95,6 +101,9 @@ func TestTestsAgainstSandboxBaselines(t *testing.T) {
 		}
 	}
 	for _, conn := range c.Connectors {
+		if conn.Internal {
+			continue
+		}
 		t.Logf("%-17s pass=%d fail=%d", conn.Type, pass[conn.Type], fail[conn.Type])
 		if pass[conn.Type] == 0 {
 			t.Errorf("%s: no tests pass on the baseline", conn.Type)

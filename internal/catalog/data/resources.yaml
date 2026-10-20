@@ -288,3 +288,65 @@ hris:
         termination_date: {type: date, label: Termination date}
         location: {type: string, label: Location}
         background_check: {type: string, label: "Background check (completed, pending, not_required)"}
+
+trustline:
+  name: Trustline platform
+  category: Platform
+  internal: true
+  description: Trustline's own records — policies and acknowledgements, people and onboarding, endpoints from the device agent, and access reviews — joined with identity data from connected systems.
+  resources:
+    policy:
+      label: Policy
+      fields:
+        id: {type: string, label: Policy slug}
+        title: {type: string, label: Title}
+        published: {type: bool, label: Has a published version}
+        version: {type: number, label: Published version number}
+        acceptance_rate: {type: number, label: Acknowledged by (% of required staff)}
+        acceptance_threshold_met: {type: bool, label: Acknowledgement threshold met}
+        pending_acceptances: {type: number, label: Staff yet to acknowledge}
+        review_overdue: {type: bool, label: Annual review overdue}
+        days_since_review: {type: number, label: Days since last review or publication}
+    person:
+      label: Person
+      fields:
+        id: {type: string, label: Work email}
+        name: {type: string, label: Name}
+        status: {type: string, label: "HR status (active, on_leave, terminated)"}
+        department: {type: string, label: Department}
+        employment_type: {type: string, label: Employment type}
+        hire_days: {type: number, label: Days since hire}
+        terminated_days: {type: number, label: Days since termination}
+        has_account: {type: bool, label: Has a Trustline account}
+        onboarding_complete: {type: bool, label: Onboarding checklist complete}
+        policies_accepted: {type: bool, label: All published policies acknowledged}
+        training_completed: {type: bool, label: Security training passed in the last 365 days}
+        device_enrolled: {type: bool, label: Has a device reporting to the agent}
+        device_compliant: {type: bool, label: All their devices are compliant}
+        background_check: {type: string, label: "Background check (completed, pending, not_required)"}
+        idp_active: {type: bool, label: Active in the identity provider}
+        okta_active: {type: bool, label: Active in Okta}
+        google_active: {type: bool, label: Active in Google Workspace}
+        github_member: {type: bool, label: Member of the GitHub organization}
+        aws_console_active: {type: bool, label: Has an AWS IAM console user}
+        access_revoked: {type: bool, label: No access remains in any connected system}
+    device:
+      label: Device
+      fields:
+        id: {type: string, label: Serial number}
+        hostname: {type: string, label: Hostname}
+        owner: {type: string, label: Owner email}
+        platform: {type: string, label: "Platform (macos, windows, linux)"}
+        disk_encrypted: {type: bool, label: Disk encrypted}
+        screen_lock_minutes: {type: number, label: Screen lock after (minutes)}
+        antivirus_running: {type: bool, label: Anti-malware running}
+        last_seen_days: {type: number, label: Days since last check-in}
+        compliant: {type: bool, label: Compliant}
+    access_review_program:
+      label: Access review program
+      fields:
+        id: {type: string, label: Program}
+        last_completed_days: {type: number, label: Days since a review campaign completed}
+        overdue: {type: bool, label: Review overdue for the configured cadence}
+        open_campaigns: {type: number, label: Open campaigns}
+        overdue_campaigns: {type: number, label: Open campaigns past their due date}

@@ -16,9 +16,9 @@ import (
 	"github.com/trustline/trustline/internal/auth"
 	"github.com/trustline/trustline/internal/compliance"
 	"github.com/trustline/trustline/internal/config"
-	"github.com/trustline/trustline/internal/jobs"
 	"github.com/trustline/trustline/internal/db"
 	"github.com/trustline/trustline/internal/domain"
+	"github.com/trustline/trustline/internal/jobs"
 	"github.com/trustline/trustline/internal/org"
 )
 
@@ -38,6 +38,9 @@ var AcmeUsers = []SeedUser{
 	{"sam@acme.test", "Sam Patel", domain.RoleEmployee},
 	{"jo@acme.test", "Jo Nakamura", domain.RoleEmployee},
 	{"kim@acme.test", "Kim Okafor", domain.RoleEmployee},
+	{"maria@acme.test", "Maria Santos", domain.RoleEmployee},
+	{"tom@acme.test", "Tom Becker", domain.RoleEmployee},
+	{"lee@acme.test", "Lee Chen", domain.RoleEmployee},
 }
 
 var GlobexUsers = []SeedUser{
@@ -97,7 +100,141 @@ func Run(ctx context.Context, pool *pgxpool.Pool, cfg *config.Config, log *slog.
 	if err := seedCompliance(ctx, comp, res.GlobexOrgID, admin("linus@globex.test"), []string{"soc2"}, []string{"aws"}, false, log); err != nil {
 		return nil, fmt.Errorf("seed globex compliance: %w", err)
 	}
+	if err := seedPhase2(ctx, comp, res.AcmeOrgID, res.Users, log); err != nil {
+		return nil, fmt.Errorf("seed acme people & policies: %w", err)
+	}
 	return res, nil
+}
+
+// corePolicies are published for the demo org.
+var corePolicies = []string{"information-security", "access-control", "acceptable-use", "incident-response", "business-continuity",
+	"vendor-management", "data-retention", "change-management", "risk-management", "hr-security", "ai-acceptable-use"}
+
+func seedPhase2(ctx context.Context, comp *compliance.Service, orgID domain.ID, users map[string]domain.ID, log *slog.Logger) error {
+	actor := func(email string) domain.Actor {
+		id := users[email]
+		return domain.Actor{Type: domain.ActorUser, ID: &id, Label: email}
+	}
+	members, err := orgMembers(ctx, comp, orgID)
+	if err != nil {
+		return err
+	}
+	// Policies: instantiate, approve (Grace), publish (Ada), acknowledge (everyone).
+	existing, err := comp.ListPolicies(ctx, orgID, false)
+	if err != nil {
+		return err
+	}
+	have := map[string]bool{}
+	for _, p := range existing {
+		have[p.Slug] = true
+	}
+	for _, slug := range corePolicies {
+		if have[slug] {
+			continue
+		}
+		d, err := comp.CreatePolicy(ctx, orgID, slug, "", actor("ada@acme.test"))
+		if err != nil {
+			return fmt.Errorf("policy %s: %w", slug, err)
+		}
+		v := d.Versions[0].ID
+		if err := comp.SubmitForApproval(ctx, orgID, v, members["grace@acme.test"], actor("ada@acme.test")); err != nil {
+			return err
+		}
+		if err := comp.DecideVersion(ctx, orgID, v, true, "Reviewed against current practice.", actor("grace@acme.test"), domain.RoleEditor, members["grace@acme.test"]); err != nil {
+			return err
+		}
+		if err := comp.Publish(ctx, orgID, v, actor("ada@acme.test")); err != nil {
+			return err
+		}
+		for email := range members {
+			if email == "auditor@acme.test" {
+				continue
+			}
+			if err := comp.Acknowledge(ctx, orgID, v, users[email], "seed", actor(email)); err != nil {
+				return err
+			}
+		}
+	}
+	// Training: everyone except Tom passed this year.
+	if c := comp.Catalog.Course("security-awareness-2026"); c != nil {
+		answers := map[string]int{}
+		for _, q := range c.Questions {
+			answers[q.ID] = q.Answer
+		}
+		for email := range members {
+			if email == "tom@acme.test" || email == "auditor@acme.test" {
+				continue
+			}
+			st, err := comp.TrainingFor(ctx, orgID, users[email])
+			if err != nil {
+				return err
+			}
+			if st.Completed {
+				continue
+			}
+			if _, err := comp.SubmitQuiz(ctx, orgID, users[email], answers, actor(email)); err != nil {
+				return err
+			}
+		}
+	}
+	// Devices via the same ingestion path the agent uses. Tom has none; Lee's screen lock is too long.
+	yes := true
+	devices := []compliance.DeviceReport{
+		{Serial: "C02ADA0001", Hostname: "ada-mbp", OwnerEmail: "ada@acme.test", Platform: "macos", OSVersion: "15.1"},
+		{Serial: "C02GRC0002", Hostname: "grace-mbp", OwnerEmail: "grace@acme.test", Platform: "macos", OSVersion: "15.1"},
+		{Serial: "PF3SAM0003", Hostname: "sam-thinkpad", OwnerEmail: "sam@acme.test", Platform: "windows", OSVersion: "11 23H2"},
+		{Serial: "C02JON0004", Hostname: "jo-mbp", OwnerEmail: "jo@acme.test", Platform: "macos", OSVersion: "15.0"},
+		{Serial: "C02KIM0005", Hostname: "kim-mba", OwnerEmail: "kim@acme.test", Platform: "macos", OSVersion: "15.1"},
+		{Serial: "PF3MAR0006", Hostname: "maria-xps", OwnerEmail: "maria@acme.test", Platform: "windows", OSVersion: "11 23H2"},
+		{Serial: "LNXLEE0007", Hostname: "lee-framework", OwnerEmail: "lee@acme.test", Platform: "linux", OSVersion: "Ubuntu 24.04"},
+	}
+	for _, d := range devices {
+		d.DiskEncrypted = &yes
+		lock := 5
+		if d.OwnerEmail == "lee@acme.test" {
+			lock = 30
+		}
+		d.ScreenLockMinutes = &lock
+		d.AntivirusRunning = true
+		d.AntivirusName = map[string]string{"macos": "XProtect", "windows": "Microsoft Defender", "linux": "ClamAV"}[d.Platform]
+		d.AgentVersion = "1.0.0"
+		if _, err := comp.IngestDeviceReport(ctx, orgID, d); err != nil {
+			return err
+		}
+	}
+	// One completed access review (Okta + GitHub), everything approved.
+	campaigns, err := comp.ListCampaigns(ctx, orgID)
+	if err != nil {
+		return err
+	}
+	if len(campaigns) == 0 {
+		c, err := comp.CreateCampaign(ctx, orgID, compliance.CampaignInput{Name: "Q3 2026 access review", Systems: []string{"github", "okta"}, DueDays: 14}, actor("ada@acme.test"))
+		if err != nil {
+			return err
+		}
+		for _, it := range c.Items {
+			if _, err := comp.Decide(ctx, orgID, it.ID, "approve", "Access matches role", actor("ada@acme.test"), domain.RoleAdmin, members["ada@acme.test"]); err != nil {
+				return err
+			}
+		}
+		if _, err := comp.CompleteCampaign(ctx, orgID, c.ID, actor("ada@acme.test")); err != nil {
+			return err
+		}
+	}
+	// Refresh platform data and evaluate it now so the demo is consistent immediately.
+	if pid, err := comp.PlatformIntegrationID(ctx, orgID); err == nil && pid != nil {
+		snap, err := comp.SyncIntegration(ctx, orgID, *pid, "seed")
+		if err != nil {
+			return err
+		}
+		if snap != nil {
+			if _, err := comp.RunTests(ctx, orgID, *snap, "seed"); err != nil {
+				return err
+			}
+		}
+	}
+	log.Info("seeded people, policies, training, devices and access reviews", "org", orgID)
+	return nil
 }
 
 var sandboxCreds = map[string]map[string]string{

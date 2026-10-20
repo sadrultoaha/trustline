@@ -49,7 +49,7 @@ SELECT c.id, c.code, c.name, c.domain, c.description, c.evidence_mode, c.status,
                  FROM catalog_requirement_controls rc JOIN catalog_requirements r ON r.id = rc.requirement_id
                  JOIN org_frameworks ofw ON ofw.framework_id = r.framework_id AND ofw.org_id = c.org_id
                  WHERE rc.control_code = c.code), '{}'),
-       (SELECT count(*) FROM tests t WHERE t.org_id = c.org_id AND t.control_id = c.id AND t.enabled),
+       (SELECT count(*) FROM tests t WHERE t.org_id = c.org_id AND t.control_id = c.id AND t.enabled AND t.last_status <> 'na'),
        (SELECT count(*) FROM tests t WHERE t.org_id = c.org_id AND t.control_id = c.id AND t.enabled AND t.last_status IN ('fail','error')),
        (SELECT count(*) FROM evidence e WHERE e.org_id = c.org_id AND e.control_id = c.id AND ` + validEvidence + `)
 FROM controls c
@@ -230,7 +230,7 @@ func (s *Service) recompute(ctx context.Context, tx pgx.Tx, orgID domain.ID, con
 	}
 	rows, err := tx.Query(ctx, `
 		SELECT c.id, c.code, c.name, c.status, c.owner_membership_id, c.evidence_mode,
-		  (SELECT count(*) FROM tests t WHERE t.org_id = c.org_id AND t.control_id = c.id AND t.enabled),
+		  (SELECT count(*) FROM tests t WHERE t.org_id = c.org_id AND t.control_id = c.id AND t.enabled AND t.last_status <> 'na'),
 		  (SELECT count(*) FROM tests t WHERE t.org_id = c.org_id AND t.control_id = c.id AND t.enabled AND t.last_status = 'pass'),
 		  (SELECT count(*) FROM tests t WHERE t.org_id = c.org_id AND t.control_id = c.id AND t.enabled AND t.last_status IN ('fail','error')),
 		  (SELECT count(*) FROM evidence e WHERE e.org_id = c.org_id AND e.control_id = c.id AND `+validEvidence+`),

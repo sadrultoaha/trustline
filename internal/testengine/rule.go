@@ -19,6 +19,9 @@ type Rule struct {
 	Max        *int   `json:"max,omitempty" yaml:"max,omitempty"`
 	Where      *Expr  `json:"where,omitempty" yaml:"where,omitempty"`
 	Assert     *Expr  `json:"assert" yaml:"assert"`
+	// RequireResources makes the result "na" (not applicable) instead of a
+	// vacuous pass when the snapshot has no resources of this type at all.
+	RequireResources bool `json:"require_resources,omitempty" yaml:"require_resources,omitempty"`
 }
 
 // Expr is a boolean expression: exactly one of And, Or, Not, or a condition.

@@ -21,7 +21,7 @@ type Failure struct {
 
 // Result is the outcome of evaluating a rule.
 type Result struct {
-	Status    string    `json:"status"` // pass | fail
+	Status    string    `json:"status"` // pass | fail | na
 	Evaluated int       `json:"evaluated"`
 	Matched   int       `json:"matched"` // resources satisfying assert
 	Failing   []Failure `json:"failing"`
@@ -33,6 +33,9 @@ func (r *Rule) Evaluate(resources []Resource) Result {
 	if r.Assert != nil && r.Assert.re == nil {
 		// Ensure regexes are compiled even when the rule was not validated.
 		_ = r.Validate(nil)
+	}
+	if r.RequireResources && len(resources) == 0 {
+		return Result{Status: "na", Failing: []Failure{}, Summary: "Not applicable: no " + strings.ReplaceAll(r.Resource, "_", " ") + " records to evaluate yet"}
 	}
 	var scoped []Resource
 	for _, res := range resources {

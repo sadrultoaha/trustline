@@ -159,6 +159,9 @@ func (s *Service) AdoptFramework(ctx context.Context, orgID domain.ID, fwID stri
 		if err != nil {
 			return err
 		}
+		if err := s.ensurePlatform(ctx, tx, orgID); err != nil {
+			return err
+		}
 		newTests, err := s.ensureTests(ctx, tx, orgID)
 		if err != nil {
 			return err

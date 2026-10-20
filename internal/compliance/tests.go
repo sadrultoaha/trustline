@@ -231,6 +231,16 @@ func (s *Service) RunTests(ctx context.Context, orgID, snapshotID domain.ID, tri
 	if err != nil {
 		return 0, err
 	}
+	// Jobs may run out of order; never let an older snapshot overwrite newer results.
+	if snap.IntegrationID != nil {
+		var newer bool
+		if err := s.Pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM snapshots WHERE org_id = $1 AND integration_id = $2 AND taken_at > $3)`, orgID, *snap.IntegrationID, snap.TakenAt).Scan(&newer); err != nil {
+			return 0, err
+		}
+		if newer {
+			return 0, nil
+		}
+	}
 	return s.runOver(ctx, orgID, snap, nil, trigger)
 }
 
@@ -344,7 +354,14 @@ func (s *Service) runOver(ctx context.Context, orgID domain.ID, snap *SnapshotVi
 		if err != nil {
 			return err
 		}
-		return s.handleTransitions(ctx, tx, orgID, transitions, ctlTransitions)
+		if err := s.handleTransitions(ctx, tx, orgID, transitions, ctlTransitions); err != nil {
+			return err
+		}
+		// Identity and HR data feed the platform's people view; refresh it.
+		if snap.Connector != "trustline" && only == nil {
+			return s.touchPlatform(ctx, tx, orgID)
+		}
+		return nil
 	})
 	return n, err
 }
@@ -364,9 +381,13 @@ func (s *Service) handleTransitions(ctx context.Context, tx pgx.Tx, orgID domain
 					return err
 				}
 			}
-		case t.To == "pass" && (t.From == "fail" || t.From == "error"):
+		case (t.To == "pass" || t.To == "na") && (t.From == "fail" || t.From == "error"):
+			why := "Resolved automatically: the test passed on "
+			if t.To == "na" {
+				why = "Closed automatically: the test stopped applying on "
+			}
 			if _, err := tx.Exec(ctx, `UPDATE tasks SET status = 'done', resolution = $3, completed_at = now(), updated_at = now()
-				WHERE org_id = $1 AND source_key = $2 AND status = 'open'`, orgID, key, "Resolved automatically: the test passed on "+time.Now().UTC().Format("2006-01-02 15:04 MST")+"."); err != nil {
+				WHERE org_id = $1 AND source_key = $2 AND status = 'open'`, orgID, key, why+time.Now().UTC().Format("2006-01-02 15:04 MST")+"."); err != nil {
 				return err
 			}
 		}

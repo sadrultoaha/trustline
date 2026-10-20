@@ -8,6 +8,7 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/trustline/trustline/internal/ai"
 	"github.com/trustline/trustline/internal/blob"
 	"github.com/trustline/trustline/internal/catalog"
 	"github.com/trustline/trustline/internal/jobs"
@@ -22,4 +23,5 @@ type Service struct {
 	Catalog *catalog.Catalog
 	Log     *slog.Logger
 	BaseURL string
+	AI      *ai.Service // synchronous AI features (policy drafting, consistency checks)
 }

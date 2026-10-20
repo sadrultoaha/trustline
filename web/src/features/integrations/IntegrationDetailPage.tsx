@@ -5,7 +5,8 @@ import { FlaskConical, RefreshCw, Unplug } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePermissions } from '@/api/auth'
 import { errorMessage } from '@/api/client'
-import { integrationQuery, integrationTypesQuery, snapshotQuery, testsQuery, useDisconnectIntegration, useSetScenario, useSyncIntegration } from '@/api/compliance'
+import { integrationQuery, integrationTypesQuery, snapshotQuery, testsQuery, useDisconnectIntegration, useSetScenario, useSyncIntegration, type ScenarioInfo } from '@/api/compliance'
+import { Select } from '@/components/ui/select'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ConnectorLogo, SeverityBadge, TestStatusBadge } from '@/components/status'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -78,7 +79,7 @@ export function IntegrationDetailPage() {
             <CardDescription>Change the simulated {type.name} account. Changes are picked up by the next sync — scheduled, or click Sync now.</CardDescription>
           </CardHeader>
           <CardContent className="divide-y">
-            {type.scenarios.map((s) => {
+            {type.scenarios.filter((s) => !s.per_person).map((s) => {
               const active = i.active_scenarios.includes(s.key)
               return (
                 <div key={s.key} className="flex items-center justify-between gap-4 py-3">
@@ -97,6 +98,7 @@ export function IntegrationDetailPage() {
                 </div>
               )
             })}
+            {type.scenarios.some((s) => s.per_person) ? <PersonScenarios integrationId={id} scenarios={type.scenarios.filter((s) => s.per_person)} active={i.active_scenarios} canWrite={can('integrations:write')} resources={snap.data?.resources} /> : null}
           </CardContent>
         </Card>
       ) : null}
@@ -208,6 +210,72 @@ function Info({ label, value }: { label: string; value: React.ReactNode }) {
     <div>
       <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="mt-0.5 text-sm font-medium">{value}</div>
+    </div>
+  )
+}
+
+function peopleEmails(resources?: Record<string, Record<string, unknown>[]>): string[] {
+  if (!resources) return []
+  const set = new Set<string>()
+  for (const r of resources.employee ?? []) set.add(String(r.email))
+  for (const r of resources.user ?? []) set.add(String(r.email ?? r.id))
+  for (const r of resources.member ?? []) set.add(String(r.email))
+  const domain = [...set].find((e) => e.includes('@'))?.split('@')[1]
+  for (const r of resources.iam_user ?? []) if (!r.is_service_account && domain) set.add(`${String(r.id)}@${domain}`)
+  return [...set].filter((e) => e.includes('@')).sort()
+}
+
+function PersonScenarios({ integrationId, scenarios, active, canWrite, resources }: { integrationId: string; scenarios: ScenarioInfo[]; active: string[]; canWrite: boolean; resources?: Record<string, Record<string, unknown>[]> }) {
+  const set = useSetScenario(integrationId)
+  const [email, setEmail] = useState('')
+  const emails = peopleEmails(resources)
+  const applied = active.filter((a) => a.includes(':'))
+  return (
+    <div className="space-y-3 py-3" data-testid="person-scenarios">
+      <div className="text-sm font-medium">Per-person changes</div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Select value={email} onChange={(e) => setEmail(e.target.value)} className="w-64" data-testid="person-scenario-email" disabled={!canWrite}>
+          <option value="">Choose a person…</option>
+          {emails.map((e) => (
+            <option key={e} value={e}>
+              {e}
+            </option>
+          ))}
+        </Select>
+        {scenarios.map((s) => (
+          <Button
+            key={s.key}
+            size="sm"
+            variant="outline"
+            disabled={!email || !canWrite || active.includes(`${s.key}:${email}`)}
+            data-testid={`person-scenario-${s.key}`}
+            title={s.description}
+            onClick={() => set.mutate({ key: `${s.key}:${email}`, active: true }, { onSuccess: () => toast.success(`${s.label}: ${email} — applies on next sync`), onError: (e) => toast.error(errorMessage(e)) })}
+          >
+            {s.label}
+          </Button>
+        ))}
+      </div>
+      {applied.length ? (
+        <ul className="space-y-1 text-sm">
+          {applied.map((a) => {
+            const [key, who] = a.split(':')
+            const label = scenarios.find((s) => s.key === key)?.label ?? key
+            return (
+              <li key={a} className="flex items-center justify-between rounded border px-2 py-1" data-testid={`applied-${a}`}>
+                <span>
+                  {label}: <span className="font-medium">{who}</span>
+                </span>
+                {canWrite ? (
+                  <Button size="sm" variant="ghost" onClick={() => set.mutate({ key: a, active: false }, { onSuccess: () => toast.success('Reverted — applies on next sync') })}>
+                    Undo
+                  </Button>
+                ) : null}
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
     </div>
   )
 }

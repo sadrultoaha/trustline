@@ -1,0 +1,315 @@
+# Platform tests evaluate Trustline's own records (policies, people, devices,
+# access reviews) joined with identity data from connected integrations.
+
+- id: trustline.policies.infosec_published
+  name: An information security policy is published
+  description: A management-approved information security policy is the foundation every framework asks for.
+  connector: trustline
+  resource: policy
+  control: GOV-01
+  severity: high
+  quantifier: any
+  assert:
+    and:
+      - {field: id, op: eq, value: information-security}
+      - {field: published, op: eq, value: true}
+  remediation:
+    summary: Publish the Information Security Policy.
+    steps:
+      - Open Policies, add the Information Security Policy from the template library.
+      - Tailor it, submit it for approval, and publish the approved version.
+
+- id: trustline.policies.acknowledged
+  name: Published policies are acknowledged by staff
+  description: Personnel must acknowledge each published policy version; the control passes when the organization's acknowledgement threshold is met for every policy.
+  connector: trustline
+  resource: policy
+  control: GOV-05
+  severity: high
+  require_resources: true
+  quantifier: all
+  where: {field: published, op: eq, value: true}
+  assert: {field: acceptance_threshold_met, op: eq, value: true}
+  remediation:
+    summary: Get the remaining staff to acknowledge the latest policy versions.
+    steps:
+      - Open Policies and check the acknowledgement column for each published policy.
+      - Remind the people listed as pending; each has an acknowledgement task in My work.
+      - The test re-evaluates as acknowledgements arrive.
+
+- id: trustline.policies.reviewed_annually
+  name: Published policies are reviewed on schedule
+  description: Policies must be reviewed at least on their review cycle (annually by default).
+  connector: trustline
+  resource: policy
+  control: GOV-04
+  severity: medium
+  require_resources: true
+  quantifier: all
+  where: {field: published, op: eq, value: true}
+  assert: {field: review_overdue, op: eq, value: false}
+  remediation:
+    summary: Review overdue policies and either publish a new version or mark them reviewed.
+    steps:
+      - Open each overdue policy from the Policies page.
+      - Read it against current practice and publish a revision, or use Mark reviewed if nothing changed.
+
+- id: trustline.policies.ai_policy_published
+  name: An AI acceptable use policy is published
+  description: Organizations using or building AI need an approved policy for acceptable use of AI.
+  connector: trustline
+  resource: policy
+  control: AI-03
+  severity: medium
+  quantifier: any
+  assert:
+    and:
+      - {field: id, op: eq, value: ai-acceptable-use}
+      - {field: published, op: eq, value: true}
+  remediation:
+    summary: Publish the AI Acceptable Use Policy.
+    steps:
+      - Add the AI Acceptable Use Policy from the template library, tailor it and publish it.
+
+- id: trustline.people.training_current
+  name: Active staff completed security training in the last year
+  description: Security awareness training is required on hire and annually.
+  connector: trustline
+  resource: person
+  control: HR-02
+  severity: medium
+  require_resources: true
+  quantifier: all
+  where: {field: status, op: eq, value: active}
+  assert: {field: training_completed, op: eq, value: true}
+  remediation:
+    summary: Have the listed people complete the security awareness course.
+    steps:
+      - Open People to see who is missing training.
+      - Each person completes the course from My work; completion is recorded automatically.
+
+- id: trustline.people.background_checks
+  name: Active staff have a completed background check
+  description: Background checks are performed for new hires in accordance with local law.
+  connector: trustline
+  resource: person
+  control: HR-01
+  severity: medium
+  require_resources: true
+  quantifier: all
+  where: {field: status, op: eq, value: active}
+  assert: {field: background_check, op: in, value: [completed, not_required]}
+  remediation:
+    summary: Complete or attest the pending background checks.
+    steps:
+      - Open each person with a pending check from People.
+      - Record the check in the HR system, or attest completion in Trustline.
+
+- id: trustline.people.onboarding_complete
+  name: Onboarding is completed within 30 days of hire
+  description: New hires must accept policies, finish training, enroll a device and pass a background check within 30 days.
+  connector: trustline
+  resource: person
+  control: HR-04
+  severity: medium
+  require_resources: true
+  quantifier: all
+  where:
+    and:
+      - {field: status, op: eq, value: active}
+      - {field: hire_days, op: gt, value: 30}
+  assert: {field: onboarding_complete, op: eq, value: true}
+  remediation:
+    summary: Finish the outstanding onboarding items.
+    steps:
+      - Open the person in People and work through the open checklist items.
+
+- id: trustline.people.policies_accepted
+  name: Active staff have acknowledged every published policy
+  description: Each person must acknowledge the current version of every published policy.
+  connector: trustline
+  resource: person
+  control: GOV-05
+  severity: low
+  require_resources: true
+  quantifier: all
+  where:
+    and:
+      - {field: status, op: eq, value: active}
+      - {field: has_account, op: eq, value: true}
+  assert: {field: policies_accepted, op: eq, value: true}
+  remediation:
+    summary: Remind people with pending acknowledgements.
+    steps:
+      - Pending acknowledgements are listed on each person's page and in their My work.
+
+- id: trustline.people.terminated_idp_deactivated
+  name: Terminated employees are deactivated in the identity provider
+  description: When someone leaves, their identity-provider account must be deactivated within one business day so every SSO application loses access.
+  connector: trustline
+  resource: person
+  control: HR-05
+  severity: critical
+  require_resources: true
+  quantifier: all
+  where: {field: status, op: eq, value: terminated}
+  assert: {field: idp_active, op: eq, value: false}
+  remediation:
+    summary: Deactivate the departed employee in the identity provider.
+    steps:
+      - In Okta Admin, open Directory → People, select the user and choose Deactivate.
+      - If Google Workspace is the identity provider, suspend the user in the Admin console.
+      - Trustline verifies the change on the next sync and closes the offboarding task.
+
+- id: trustline.people.terminated_google_suspended
+  name: Terminated employees are suspended in Google Workspace
+  description: Departed employees must not retain mailbox or Drive access.
+  connector: trustline
+  resource: person
+  control: HR-05
+  severity: high
+  require_resources: true
+  quantifier: all
+  where: {field: status, op: eq, value: terminated}
+  assert: {field: google_active, op: eq, value: false}
+  remediation:
+    summary: Suspend the user in Google Workspace and transfer their data.
+    steps:
+      - In the Admin console, open Directory → Users, select the user and choose Suspend.
+      - Transfer Drive ownership to their manager before deletion.
+
+- id: trustline.people.terminated_github_removed
+  name: Terminated employees are removed from GitHub
+  description: Personal GitHub accounts keep access to source code until removed from the organization.
+  connector: trustline
+  resource: person
+  control: HR-05
+  severity: high
+  require_resources: true
+  quantifier: all
+  where: {field: status, op: eq, value: terminated}
+  assert: {field: github_member, op: eq, value: false}
+  remediation:
+    summary: Remove the user from the GitHub organization.
+    steps:
+      - In GitHub, open the organization → People, select the user and choose Remove from organization.
+
+- id: trustline.people.terminated_aws_removed
+  name: Terminated employees have no AWS console access
+  description: Direct IAM users of departed staff must be removed.
+  connector: trustline
+  resource: person
+  control: HR-05
+  severity: high
+  require_resources: true
+  quantifier: all
+  where: {field: status, op: eq, value: terminated}
+  assert: {field: aws_console_active, op: eq, value: false}
+  remediation:
+    summary: Delete the IAM user of the departed employee.
+    steps:
+      - In the IAM console, open Users, delete the user's login profile, access keys and then the user.
+
+- id: trustline.people.devices_enrolled
+  name: Active staff have an enrolled device
+  description: Every person working with company data must use a device that reports to the endpoint agent.
+  connector: trustline
+  resource: person
+  control: AST-01
+  severity: medium
+  require_resources: true
+  quantifier: all
+  where:
+    and:
+      - {field: status, op: eq, value: active}
+      - {field: employment_type, op: neq, value: contractor}
+  assert: {field: device_enrolled, op: eq, value: true}
+  remediation:
+    summary: Install the Trustline device agent on each person's laptop.
+    steps:
+      - Share the agent install command from Settings → Devices with the people listed.
+
+- id: trustline.devices.disk_encrypted
+  name: Company devices have full-disk encryption
+  description: Laptops hold company data at rest and must be encrypted with FileVault, BitLocker or LUKS.
+  connector: trustline
+  resource: device
+  control: AST-03
+  severity: high
+  require_resources: true
+  quantifier: all
+  assert: {field: disk_encrypted, op: eq, value: true}
+  remediation:
+    summary: Turn on full-disk encryption on the listed devices.
+    steps:
+      - macOS — System Settings → Privacy & Security → FileVault → Turn On.
+      - Windows — Settings → Privacy & security → Device encryption (or BitLocker).
+      - Linux — reinstall with LUKS full-disk encryption.
+
+- id: trustline.devices.screen_lock
+  name: Company devices lock within 15 minutes
+  description: An unattended unlocked laptop exposes everything the user can reach.
+  connector: trustline
+  resource: device
+  control: AST-04
+  severity: medium
+  require_resources: true
+  quantifier: all
+  assert:
+    and:
+      - {field: screen_lock_minutes, op: exists}
+      - {field: screen_lock_minutes, op: lte, value: 15}
+  remediation:
+    summary: Set the automatic screen lock to 15 minutes or less.
+    steps:
+      - macOS — System Settings → Lock Screen → require password after screen saver ≤ 15 minutes.
+      - Windows — Settings → Accounts → Sign-in options → Dynamic lock / screen timeout.
+
+- id: trustline.devices.antivirus
+  name: Company devices run anti-malware protection
+  description: Endpoints must run an active anti-malware or EDR agent.
+  connector: trustline
+  resource: device
+  control: AST-05
+  severity: medium
+  require_resources: true
+  quantifier: all
+  assert: {field: antivirus_running, op: eq, value: true}
+  remediation:
+    summary: Install or re-enable the anti-malware agent.
+    steps:
+      - Confirm XProtect/Defender is active, or install the company EDR agent.
+
+- id: trustline.devices.recent_checkin
+  name: Devices checked in within the last 7 days
+  description: Stale devices mean the inventory and compliance data are out of date.
+  connector: trustline
+  resource: device
+  control: AST-01
+  severity: low
+  require_resources: true
+  quantifier: all
+  assert: {field: last_seen_days, op: lte, value: 7}
+  remediation:
+    summary: Make sure the agent runs on the listed devices, or retire them.
+    steps:
+      - Check the agent's scheduled task on each device, or delete retired devices.
+
+- id: trustline.access_reviews.current
+  name: User access is reviewed on the configured cadence
+  description: Access to critical systems must be reviewed at least as often as the organization's access review setting.
+  connector: trustline
+  resource: access_review_program
+  control: IAM-04
+  severity: high
+  require_resources: true
+  quantifier: all
+  assert:
+    and:
+      - {field: overdue, op: eq, value: false}
+      - {field: overdue_campaigns, op: eq, value: 0}
+  remediation:
+    summary: Run and complete an access review campaign.
+    steps:
+      - Open Access reviews, start a campaign for your identity provider and source control.
+      - Reviewers approve or revoke each account; complete the campaign to generate evidence.

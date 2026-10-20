@@ -19,32 +19,38 @@ import (
 )
 
 type TaskRow struct {
-	ID          domain.ID  `json:"id"`
-	Kind        string     `json:"kind"`
-	Title       string     `json:"title"`
-	Description string     `json:"description"`
-	Status      string     `json:"status"`
-	Priority    string     `json:"priority"`
-	ControlID   *domain.ID `json:"control_id,omitempty"`
-	ControlCode string     `json:"control_code"`
-	TestID      *domain.ID `json:"test_id,omitempty"`
-	Assignee    *Owner     `json:"assignee,omitempty"`
-	Steps       []string   `json:"steps"`
-	Terraform   string     `json:"terraform"`
-	AIStatus    string     `json:"ai_status"`
-	AIModel     string     `json:"ai_model"`
-	AINotes     string     `json:"ai_notes"`
-	Resolution  string     `json:"resolution"`
-	DueAt       *time.Time `json:"due_at,omitempty"`
-	CompletedAt *time.Time `json:"completed_at,omitempty"`
-	CreatedAt   time.Time  `json:"created_at"`
-	Overdue     bool       `json:"overdue"`
+	ID          domain.ID      `json:"id"`
+	Kind        string         `json:"kind"`
+	Title       string         `json:"title"`
+	Description string         `json:"description"`
+	Status      string         `json:"status"`
+	Priority    string         `json:"priority"`
+	ControlID   *domain.ID     `json:"control_id,omitempty"`
+	ControlCode string         `json:"control_code"`
+	TestID      *domain.ID     `json:"test_id,omitempty"`
+	Assignee    *Owner         `json:"assignee,omitempty"`
+	Steps       []string       `json:"steps"`
+	Terraform   string         `json:"terraform"`
+	AIStatus    string         `json:"ai_status"`
+	AIModel     string         `json:"ai_model"`
+	AINotes     string         `json:"ai_notes"`
+	Resolution  string         `json:"resolution"`
+	DueAt       *time.Time     `json:"due_at,omitempty"`
+	CompletedAt *time.Time     `json:"completed_at,omitempty"`
+	CreatedAt   time.Time      `json:"created_at"`
+	Overdue     bool           `json:"overdue"`
+	PersonID    *domain.ID     `json:"person_id,omitempty"`
+	PersonName  string         `json:"person_name"`
+	ItemKey     string         `json:"item_key"`
+	Meta        map[string]any `json:"meta"`
 }
 
 const taskSelect = `SELECT t.id, t.kind, t.title, t.description, t.status, t.priority, t.control_id, COALESCE(c.code, ''), t.test_id,
-  m.id, u.name, u.email, t.steps, t.terraform, t.ai_status, t.ai_model, t.ai_notes, t.resolution, t.due_at, t.completed_at, t.created_at
+  m.id, u.name, u.email, t.steps, t.terraform, t.ai_status, t.ai_model, t.ai_notes, t.resolution, t.due_at, t.completed_at, t.created_at,
+  t.person_id, COALESCE(p.name, ''), t.item_key, t.meta
 FROM tasks t
 LEFT JOIN controls c ON c.id = t.control_id AND c.org_id = t.org_id
+LEFT JOIN people p ON p.id = t.person_id AND p.org_id = t.org_id
 LEFT JOIN org_memberships m ON m.id = t.assignee_membership_id AND m.org_id = t.org_id
 LEFT JOIN users u ON u.id = m.user_id`
 
@@ -52,9 +58,10 @@ func scanTask(row pgx.Row) (*TaskRow, error) {
 	var t TaskRow
 	var mID *domain.ID
 	var mName, mEmail *string
-	var steps []byte
+	var steps, meta []byte
 	if err := row.Scan(&t.ID, &t.Kind, &t.Title, &t.Description, &t.Status, &t.Priority, &t.ControlID, &t.ControlCode, &t.TestID,
-		&mID, &mName, &mEmail, &steps, &t.Terraform, &t.AIStatus, &t.AIModel, &t.AINotes, &t.Resolution, &t.DueAt, &t.CompletedAt, &t.CreatedAt); err != nil {
+		&mID, &mName, &mEmail, &steps, &t.Terraform, &t.AIStatus, &t.AIModel, &t.AINotes, &t.Resolution, &t.DueAt, &t.CompletedAt, &t.CreatedAt,
+		&t.PersonID, &t.PersonName, &t.ItemKey, &meta); err != nil {
 		if db.IsNoRows(err) {
 			return nil, domain.ErrNotFound
 		}
@@ -64,6 +71,10 @@ func scanTask(row pgx.Row) (*TaskRow, error) {
 		t.Assignee = &Owner{MembershipID: *mID, Name: deref(mName), Email: deref(mEmail)}
 	}
 	_ = json.Unmarshal(steps, &t.Steps)
+	_ = json.Unmarshal(meta, &t.Meta)
+	if t.Meta == nil {
+		t.Meta = map[string]any{}
+	}
 	if t.Steps == nil {
 		t.Steps = []string{}
 	}
@@ -75,6 +86,8 @@ type TaskFilter struct {
 	Status     string
 	ControlID  *domain.ID
 	AssigneeID *domain.ID // membership
+	PersonID   *domain.ID
+	Kinds      []string
 }
 
 func (s *Service) ListTasks(ctx context.Context, orgID domain.ID, f TaskFilter) ([]TaskRow, error) {
@@ -91,6 +104,14 @@ func (s *Service) ListTasks(ctx context.Context, orgID domain.ID, f TaskFilter) 
 	if f.AssigneeID != nil {
 		args = append(args, *f.AssigneeID)
 		where = append(where, fmt.Sprintf("t.assignee_membership_id = $%d", len(args)))
+	}
+	if f.PersonID != nil {
+		args = append(args, *f.PersonID)
+		where = append(where, fmt.Sprintf("t.person_id = $%d", len(args)))
+	}
+	if len(f.Kinds) > 0 {
+		args = append(args, f.Kinds)
+		where = append(where, fmt.Sprintf("t.kind = ANY($%d)", len(args)))
 	}
 	rows, err := s.Pool.Query(ctx, taskSelect+" WHERE "+strings.Join(where, " AND ")+
 		` ORDER BY CASE t.status WHEN 'open' THEN 0 ELSE 1 END, CASE t.priority WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END, t.created_at DESC LIMIT 500`, args...)

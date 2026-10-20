@@ -37,8 +37,9 @@ type Connector interface {
 type Mode string
 
 const (
-	ModeSandbox Mode = "sandbox" // fake implementation over controllable state
-	ModeLive    Mode = "live"    // real API client
+	ModeSandbox  Mode = "sandbox"  // fake implementation over controllable state
+	ModeLive     Mode = "live"     // real API client
+	ModePlatform Mode = "platform" // built-in Trustline data (connector "trustline")
 )
 
 // CredentialField describes one input on the connect form.
@@ -83,6 +84,9 @@ var Types = map[string]Type{
 		{Key: "admin_email", Label: "Admin email to impersonate", Required: true},
 		{Key: "service_account_json", Label: "Service account key (JSON)", Required: true, Secret: true, Help: "Domain-wide delegation with read-only directory and reports scopes."},
 	}},
+	// trustline is the built-in platform connector: its snapshot is built from
+	// Trustline's own records by the compliance service, never by Build.
+	"trustline": {Type: "trustline", Credentials: []CredentialField{}},
 	"hris": {Type: "hris", Credentials: []CredentialField{
 		{Key: "subdomain", Label: "BambooHR subdomain", Placeholder: "acme", Required: true},
 		{Key: "api_key", Label: "API key", Required: true, Secret: true},
@@ -132,6 +136,8 @@ func Build(typ string, mode Mode, creds map[string]string, state map[string]any)
 		return &Fake{Type: typ, State: state}, nil
 	case ModeLive:
 		return nil, ErrLiveUnavailable
+	case ModePlatform:
+		return nil, errors.New("platform snapshots are built by the compliance service")
 	}
 	return nil, fmt.Errorf("unknown mode %q", mode)
 }

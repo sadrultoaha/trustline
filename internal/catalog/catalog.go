@@ -56,21 +56,22 @@ type Remediation struct {
 }
 
 type Test struct {
-	ID          string           `yaml:"id" json:"id"`
-	Name        string           `yaml:"name" json:"name"`
-	Description string           `yaml:"description" json:"description"`
-	Connector   string           `yaml:"connector" json:"connector"`
-	Resource    string           `yaml:"resource" json:"resource"`
-	Control     string           `yaml:"control" json:"control"`
-	Severity    string           `yaml:"severity" json:"severity"`
-	Quantifier  string           `yaml:"quantifier" json:"quantifier"`
-	Min         *int             `yaml:"min" json:"min,omitempty"`
-	Max         *int             `yaml:"max" json:"max,omitempty"`
-	Where       any              `yaml:"where" json:"where,omitempty"`
-	Assert      any              `yaml:"assert" json:"assert"`
-	Remediation Remediation      `yaml:"remediation" json:"remediation"`
-	Rule        *testengine.Rule `yaml:"-" json:"-"`
-	RuleJSON    json.RawMessage  `yaml:"-" json:"rule"`
+	ID               string           `yaml:"id" json:"id"`
+	Name             string           `yaml:"name" json:"name"`
+	Description      string           `yaml:"description" json:"description"`
+	Connector        string           `yaml:"connector" json:"connector"`
+	Resource         string           `yaml:"resource" json:"resource"`
+	Control          string           `yaml:"control" json:"control"`
+	Severity         string           `yaml:"severity" json:"severity"`
+	Quantifier       string           `yaml:"quantifier" json:"quantifier"`
+	Min              *int             `yaml:"min" json:"min,omitempty"`
+	Max              *int             `yaml:"max" json:"max,omitempty"`
+	Where            any              `yaml:"where" json:"where,omitempty"`
+	RequireResources bool             `yaml:"require_resources" json:"require_resources,omitempty"`
+	Assert           any              `yaml:"assert" json:"assert"`
+	Remediation      Remediation      `yaml:"remediation" json:"remediation"`
+	Rule             *testengine.Rule `yaml:"-" json:"-"`
+	RuleJSON         json.RawMessage  `yaml:"-" json:"rule"`
 }
 
 type Field struct {
@@ -90,7 +91,44 @@ type Connector struct {
 	Name        string         `json:"name"`
 	Category    string         `json:"category"`
 	Description string         `json:"description"`
+	Internal    bool           `json:"internal"` // built-in platform connector, not user-connectable
 	Resources   []ResourceType `json:"resources"`
+}
+
+// PolicyTemplate is one document of the policy library.
+type PolicyTemplate struct {
+	ID              string   `yaml:"id" json:"id"`
+	Title           string   `yaml:"title" json:"title"`
+	Category        string   `yaml:"category" json:"category"`
+	Summary         string   `yaml:"summary" json:"summary"`
+	Controls        []string `yaml:"controls" json:"controls"`
+	ReviewCycleDays int      `yaml:"review_cycle_days" json:"review_cycle_days"`
+	Markdown        string   `yaml:"-" json:"-"`
+	Words           int      `yaml:"-" json:"words"`
+}
+
+type TrainingModule struct {
+	Title string `yaml:"title" json:"title"`
+	Body  string `yaml:"body" json:"body"`
+}
+
+type TrainingQuestion struct {
+	ID          string   `yaml:"id" json:"id"`
+	Question    string   `yaml:"question" json:"question"`
+	Options     []string `yaml:"options" json:"options"`
+	Answer      int      `yaml:"answer" json:"-"`
+	Explanation string   `yaml:"explanation" json:"-"`
+}
+
+// TrainingCourse is the built-in security awareness course.
+type TrainingCourse struct {
+	ID           string             `yaml:"id" json:"id"`
+	Title        string             `yaml:"title" json:"title"`
+	Description  string             `yaml:"description" json:"description"`
+	PassingScore int                `yaml:"passing_score" json:"passing_score"`
+	ValidDays    int                `yaml:"valid_days" json:"valid_days"`
+	Modules      []TrainingModule   `yaml:"modules" json:"modules"`
+	Questions    []TrainingQuestion `yaml:"questions" json:"questions"`
 }
 
 // Catalog is the parsed, validated content.
@@ -99,6 +137,8 @@ type Catalog struct {
 	Frameworks []Framework
 	Tests      []Test
 	Connectors []Connector
+	Policies   []PolicyTemplate
+	Training   []TrainingCourse
 
 	controlByCode map[string]*Control
 	fieldIndex    map[string]map[string]map[string]Field // connector → resource → path → field
@@ -148,8 +188,9 @@ func parse(fsys fs.FS) (*Catalog, error) {
 		Name        string `yaml:"name"`
 		Category    string `yaml:"category"`
 		Description string `yaml:"description"`
+		Internal    bool   `yaml:"internal"`
 		Resources   map[string]struct {
-			Label  string `yaml:"label"`
+			Label  string    `yaml:"label"`
 			Fields yaml.Node `yaml:"fields"`
 		} `yaml:"resources"`
 	}
@@ -157,7 +198,7 @@ func parse(fsys fs.FS) (*Catalog, error) {
 		return nil, err
 	}
 	for typ, conn := range raw {
-		cn := Connector{Type: typ, Name: conn.Name, Category: conn.Category, Description: conn.Description}
+		cn := Connector{Type: typ, Name: conn.Name, Category: conn.Category, Description: conn.Description, Internal: conn.Internal}
 		c.fieldIndex[typ] = map[string]map[string]Field{}
 		for rtype, r := range conn.Resources {
 			rt := ResourceType{Type: rtype, Label: r.Label}
@@ -181,7 +222,9 @@ func parse(fsys fs.FS) (*Catalog, error) {
 		sort.Slice(cn.Resources, func(i, j int) bool { return cn.Resources[i].Type < cn.Resources[j].Type })
 		c.Connectors = append(c.Connectors, cn)
 	}
-	sort.Slice(c.Connectors, func(i, j int) bool { return connectorOrder(c.Connectors[i].Type) < connectorOrder(c.Connectors[j].Type) })
+	sort.Slice(c.Connectors, func(i, j int) bool {
+		return connectorOrder(c.Connectors[i].Type) < connectorOrder(c.Connectors[j].Type)
+	})
 
 	// Frameworks.
 	fwFiles, _ := fs.Glob(fsys, "data/frameworks/*.yaml")
@@ -242,6 +285,9 @@ func parse(fsys fs.FS) (*Catalog, error) {
 			if t.Max != nil {
 				ruleSrc["max"] = *t.Max
 			}
+			if t.RequireResources {
+				ruleSrc["require_resources"] = true
+			}
 			rule, err := testengine.FromAny(ruleSrc)
 			if err != nil {
 				return nil, fmt.Errorf("%s: %s: %w", f, t.ID, err)
@@ -254,11 +300,88 @@ func parse(fsys fs.FS) (*Catalog, error) {
 			c.Tests = append(c.Tests, t)
 		}
 	}
+
+	// Policy templates.
+	policyFiles, _ := fs.Glob(fsys, "data/policies/*.md")
+	sort.Strings(policyFiles)
+	seenPolicy := map[string]bool{}
+	for _, f := range policyFiles {
+		if strings.HasSuffix(f, "README.md") {
+			continue
+		}
+		raw, err := fs.ReadFile(fsys, f)
+		if err != nil {
+			return nil, err
+		}
+		text := strings.ReplaceAll(string(raw), "\r\n", "\n")
+		if !strings.HasPrefix(text, "---\n") {
+			return nil, fmt.Errorf("%s: missing front matter", f)
+		}
+		end := strings.Index(text[4:], "\n---\n")
+		if end < 0 {
+			return nil, fmt.Errorf("%s: unterminated front matter", f)
+		}
+		var pt PolicyTemplate
+		if err := yaml.Unmarshal([]byte(text[4:4+end]), &pt); err != nil {
+			return nil, fmt.Errorf("%s: %w", f, err)
+		}
+		pt.Markdown = strings.TrimSpace(text[4+end+5:])
+		pt.Words = len(strings.Fields(pt.Markdown))
+		if pt.ID == "" || pt.Title == "" || pt.Markdown == "" {
+			return nil, fmt.Errorf("%s: id, title and body are required", f)
+		}
+		if seenPolicy[pt.ID] {
+			return nil, fmt.Errorf("%s: duplicate policy id %s", f, pt.ID)
+		}
+		seenPolicy[pt.ID] = true
+		if pt.ReviewCycleDays <= 0 {
+			pt.ReviewCycleDays = 365
+		}
+		for _, cc := range pt.Controls {
+			if c.controlByCode[cc] == nil {
+				return nil, fmt.Errorf("%s: unknown control %s", f, cc)
+			}
+		}
+		c.Policies = append(c.Policies, pt)
+	}
+
+	// Training courses.
+	courseFiles, _ := fs.Glob(fsys, "data/training/*.yaml")
+	for _, f := range courseFiles {
+		var tc TrainingCourse
+		if err := readYAML(fsys, f, &tc); err != nil {
+			return nil, err
+		}
+		for _, q := range tc.Questions {
+			if q.Answer < 0 || q.Answer >= len(q.Options) {
+				return nil, fmt.Errorf("%s: question %s has no valid answer", f, q.ID)
+			}
+		}
+		c.Training = append(c.Training, tc)
+	}
 	return c, nil
 }
 
+func (c *Catalog) PolicyTemplate(id string) *PolicyTemplate {
+	for i := range c.Policies {
+		if c.Policies[i].ID == id {
+			return &c.Policies[i]
+		}
+	}
+	return nil
+}
+
+func (c *Catalog) Course(id string) *TrainingCourse {
+	for i := range c.Training {
+		if c.Training[i].ID == id {
+			return &c.Training[i]
+		}
+	}
+	return nil
+}
+
 func connectorOrder(t string) string {
-	order := map[string]string{"aws": "0", "gcp": "1", "github": "2", "okta": "3", "google_workspace": "4", "hris": "5"}
+	order := map[string]string{"aws": "0", "gcp": "1", "github": "2", "okta": "3", "google_workspace": "4", "hris": "5", "trustline": "8"}
 	if o, ok := order[t]; ok {
 		return o
 	}

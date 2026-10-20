@@ -215,7 +215,7 @@ func TestEvidenceUploadAIValidationAndOverride(t *testing.T) {
 		t.Fatalf("new evidence should be pending with expiry: %v", ev)
 	}
 	testutil.Eventually(t, 30*time.Second, "AI verdict", func() bool {
-		return c.Get("/api/v1/evidence/"+ev["id"].(string)).Body["ai_status"] == "done"
+		return c.Get("/api/v1/evidence/" + ev["id"].(string)).Body["ai_status"] == "done"
 	})
 	got := c.Get("/api/v1/evidence/" + ev["id"].(string)).Body
 	if got["ai_verdict"] != "pass" || got["ai_reasoning"] == "" {
@@ -238,7 +238,7 @@ func TestEvidenceUploadAIValidationAndOverride(t *testing.T) {
 	other := controlByCode(t, c, "HR-01")
 	bad := c.Must(c.Upload("/api/v1/controls/"+other["id"].(string)+"/evidence", "file", "lunch.txt", []byte("Team lunch on Friday at noon."), nil), 201).Body
 	testutil.Eventually(t, 30*time.Second, "AI verdict on irrelevant file", func() bool {
-		return c.Get("/api/v1/evidence/"+bad["id"].(string)).Body["ai_status"] == "done"
+		return c.Get("/api/v1/evidence/" + bad["id"].(string)).Body["ai_status"] == "done"
 	})
 	if v := c.Get("/api/v1/evidence/" + bad["id"].(string)).Body["ai_verdict"]; v != "fail" {
 		t.Fatalf("irrelevant evidence should fail, got %v", v)
@@ -255,10 +255,10 @@ func TestAIOptOutSkipsValidation(t *testing.T) {
 	c := app.Signup(t, testutil.Unique("noai")+"@example.test", testutil.Unique("No AI Co"))
 	c.Must(c.Patch("/api/v1/org", obj{"settings": obj{"access_review_days": 90, "password_min_length": 12, "policy_acceptance_threshold": 90, "ai_enabled": false, "timezone": "UTC", "slack_webhook_url": "", "email_notifications": false}}), 200)
 	c.Must(c.Post("/api/v1/frameworks/soc2/adopt", obj{}), 200)
-	ctl := controlByCode(t, c, "GOV-01")
-	ev := c.Must(c.Upload("/api/v1/controls/"+ctl["id"].(string)+"/evidence", "file", "infosec-policy.txt", []byte("Information security policy approved"), nil), 201).Body
+	ctl := controlByCode(t, c, "GOV-02") // manual control without automated tests
+	ev := c.Must(c.Upload("/api/v1/controls/"+ctl["id"].(string)+"/evidence", "file", "security-roles.txt", []byte("The security officer role and responsibilities are assigned to Ada."), nil), 201).Body
 	testutil.Eventually(t, 30*time.Second, "validation skipped", func() bool {
-		return c.Get("/api/v1/evidence/"+ev["id"].(string)).Body["ai_status"] == "skipped"
+		return c.Get("/api/v1/evidence/" + ev["id"].(string)).Body["ai_status"] == "skipped"
 	})
 	var calls int
 	if err := app.Pool.QueryRow(t.Context(), `SELECT count(*) FROM ai_calls a JOIN org_memberships m ON m.org_id = a.org_id JOIN users u ON u.id = m.user_id WHERE u.email LIKE 'noai%'`).Scan(&calls); err != nil {
@@ -268,7 +268,7 @@ func TestAIOptOutSkipsValidation(t *testing.T) {
 		t.Fatalf("no AI calls expected for opted-out org, got %d", calls)
 	}
 	c.Must(c.Post("/api/v1/evidence/"+ev["id"].(string)+"/review", obj{"verdict": "pass"}), 200)
-	if s := controlByCode(t, c, "GOV-01")["status"]; s != "passing" {
+	if s := controlByCode(t, c, "GOV-02")["status"]; s != "passing" {
 		t.Fatalf("human-accepted evidence should pass the control, got %v", s)
 	}
 }
@@ -296,14 +296,14 @@ func TestCustomTestBuilderRules(t *testing.T) {
 	created := c.Must(c.Post("/api/v1/tests", obj{"name": "Confidential buckets use KMS and versioning", "control_id": ctl["id"], "integration_type": "aws", "severity": "high", "rule": rule,
 		"remediation": obj{"summary": "Use KMS and versioning", "steps": []string{"Enable versioning"}}}), 201).Body
 	testutil.Eventually(t, 30*time.Second, "custom test runs", func() bool {
-		return c.Get("/api/v1/tests/"+created["id"].(string)).Body["last_status"] == "pass"
+		return c.Get("/api/v1/tests/" + created["id"].(string)).Body["last_status"] == "pass"
 	})
 	// Run now works synchronously; disable dismisses from control status.
 	c.Must(c.Post("/api/v1/tests/"+created["id"].(string)+"/run", obj{}), 200)
 	c.Must(c.Patch("/api/v1/tests/"+created["id"].(string), obj{"enabled": false}), 200)
 	schema := c.Must(c.Get("/api/v1/test-schema"), 200).Body
-	if len(schema["connectors"].([]any)) != 6 {
-		t.Fatalf("schema should list 6 connectors")
+	if len(schema["connectors"].([]any)) != 7 {
+		t.Fatalf("schema should list 6 connectors plus the platform")
 	}
 }
 

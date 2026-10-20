@@ -301,3 +301,21 @@ func sharedBlobDir(t testing.TB) string {
 	})
 	return blobDir
 }
+
+// DoAuth sends a JSON request with a bearer token (device agent, API keys).
+func (c *Client) DoAuth(method, path, token string, body any) Resp {
+	c.t.Helper()
+	b, _ := json.Marshal(body)
+	req, _ := http.NewRequest(method, c.base+path, strings.NewReader(string(b)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err := c.http.Do(req)
+	if err != nil {
+		c.t.Fatalf("%s %s: %v", method, path, err)
+	}
+	defer res.Body.Close()
+	raw, _ := io.ReadAll(res.Body)
+	out := Resp{Status: res.StatusCode, Raw: raw, Header: res.Header}
+	_ = json.Unmarshal(raw, &out.Body)
+	return out
+}

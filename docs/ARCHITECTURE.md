@@ -369,3 +369,62 @@ calls the provider with a JSON schema (Anthropic structured outputs, adaptive th
 the result, and logs tokens, cost and latency to `ai_calls`. Tasks implemented: `remediation_plan`
 (steps + Terraform for the failing resources) and `evidence_validation`. Phase 5 adds the
 assistant, agent tools and MCP on the same package.
+
+## 13. Policies, personnel and access reviews (Phase 2)
+
+### Platform connector
+
+Trustline's own records are exposed to the rule engine through a built-in integration of type
+`trustline` (mode `platform`), created when an org adopts its first framework or connects its
+first integration. Its snapshot is built by `compliance.buildPlatformSnapshot`:
+
+| Resource | Built from |
+|---|---|
+| `policy` | published versions, acknowledgement counts vs. the audience (admins, editors, employees), review dates |
+| `person` | `people` (HRIS) joined with acknowledgements, training, devices, and the latest Okta / Google Workspace / GitHub / AWS snapshots |
+| `device` | device-agent reports |
+| `access_review_program` | campaigns (emitted only once an identity system is connected) |
+
+Platform syncs run on the scheduler tick and on every relevant change (`PlatformSyncArgs`, not
+unique; out-of-order test runs are discarded). The same transaction **reconciles**
+system-managed tasks: acknowledgement tasks are opened for staff missing an acceptance and closed
+when they accept; onboarding items (account, policies, training, device, background) and
+offboarding items (Okta, Google Workspace, GitHub, AWS) close themselves when the data shows the
+condition is met; access-review revocations close when the account is gone.
+
+Rules may set `require_resources: true`: with no resources of the type at all the test is
+**not applicable** (`na`) instead of vacuously passing, and does not decide the control.
+
+### Policies
+
+`policies` + `policy_versions` (`draft → in_review → approved | rejected → published →
+superseded`), at most one open version per policy. Templates (22, Markdown + front matter) are
+rendered with org placeholders and sanitized (bluemonday) into HTML; the editor is TipTap.
+Publishing supersedes the previous version, schedules the next review, notifies staff and
+queues a consistency check. Acknowledgements are per version (`policy_acceptances`). A daily job
+opens review tasks 30 days before `next_review_at`. AI: `policy_draft.v1` (tailored draft from
+template + org context) and `policy_consistency.v1` (policy text vs. configured settings).
+
+### People
+
+The HRIS snapshot drives `people`. The first import records the workforce without starting
+onboarding for long-tenured staff. Afterwards:
+
+* **New hire** → onboarding checklist + an employee invite by email.
+* **Termination** → one verified removal task per connected identity system (Okta is critical),
+  a device-recovery task when devices exist, immediate removal of the person's Trustline
+  membership, and an admin alert.
+* **Reactivation** → open offboarding tasks are dismissed.
+
+Training: one built-in course (6 modules, 10-question quiz, 80% to pass, valid 365 days); answers
+are graded server-side and never sent to the client. Devices report to `POST /api/v1/agent/report`
+with an org enrollment token (`tld_…`, stored hashed); the agent script is served at
+`/agent/trustline-agent.sh` (macOS, Linux, Windows via Git Bash/WSL).
+
+### Access reviews
+
+A campaign snapshots accounts and entitlements from the latest Okta / Google Workspace / GitHub /
+AWS data and assigns each account to the owner's manager (from the HRIS), falling back to the
+creator. Reviewers keep or revoke from My work or the campaign page; revocations open verified
+removal tasks. Completing a campaign files the CSV export as passing evidence on IAM-04. A daily
+job opens a campaign when the org's `access_review_days` cadence has elapsed.

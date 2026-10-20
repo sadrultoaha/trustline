@@ -57,3 +57,21 @@
   * { @apply border-border; }
   body { @apply bg-background text-foreground antialiased; }
 }
+
+/* Policy documents (editor and read-only view). */
+@layer components {
+  .policy-content { @apply text-sm leading-relaxed text-foreground; }
+  .policy-content h1 { @apply mb-3 mt-1 text-2xl font-semibold tracking-tight; }
+  .policy-content h2 { @apply mb-2 mt-6 text-lg font-semibold; }
+  .policy-content h3 { @apply mb-2 mt-4 text-base font-semibold; }
+  .policy-content p { @apply my-2; }
+  .policy-content ul { @apply my-2 list-disc pl-6; }
+  .policy-content ol { @apply my-2 list-decimal pl-6; }
+  .policy-content li { @apply my-0.5; }
+  .policy-content table { @apply my-3 w-full border-collapse text-sm; }
+  .policy-content th, .policy-content td { @apply border px-2 py-1 text-left align-top; }
+  .policy-content th { @apply bg-muted font-medium; }
+  .policy-content code { @apply rounded bg-muted px-1 text-xs; }
+  .policy-content blockquote { @apply border-l-4 pl-3 text-muted-foreground; }
+  .policy-editor .ProseMirror { @apply min-h-[420px] outline-none; }
+}

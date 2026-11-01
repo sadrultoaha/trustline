@@ -88,6 +88,7 @@ export interface Vendor {
   has_security_report: boolean
   has_dpa: boolean
   documents: number
+  frameworks: string[]
 }
 export interface Citation {
   page: number
@@ -127,6 +128,7 @@ export interface VendorQuestionnaire {
   template_id: string
   recipient_email: string
   status: string
+  templates: QuestionnaireTemplate[]
   answers: Record<string, string>
   sent_at: string
   submitted_at?: string
@@ -144,7 +146,16 @@ export interface QuestionnaireTemplate {
   id: string
   title: string
   description: string
+  frameworks: string[]
   questions: QuestionnaireQuestion[]
+}
+export interface QuestionnaireSummary {
+  id: string
+  title: string
+  description: string
+  frameworks: string[]
+  question_count: number
+  generated: boolean
 }
 export interface VendorAssessmentRow {
   id: string
@@ -161,14 +172,15 @@ export interface VendorDetail extends Vendor {
   documents_list: VendorDocument[]
   questionnaires: VendorQuestionnaire[]
   assessments: VendorAssessmentRow[]
-  questionnaire_template?: QuestionnaireTemplate
+  questionnaire_templates: QuestionnaireSummary[]
+  questionnaires_default: boolean
 }
 export interface PortalView {
   org_name: string
   vendor_name: string
   status: string
   expires_at: string
-  template: QuestionnaireTemplate
+  templates: QuestionnaireTemplate[]
   answers: Record<string, string>
 }
 export interface VendorInput {
@@ -181,6 +193,8 @@ export interface VendorInput {
   handles_pii?: boolean
   owner_membership_id?: string
   status?: string
+  frameworks?: string[]
+  questionnaires?: string[]
 }
 
 type Items<T> = { items: T[] }
@@ -190,8 +204,14 @@ export const risksQuery = (status?: string) =>
 export const riskQuery = (id: string) => queryOptions({ queryKey: ['risk', id], queryFn: () => api.get<Risk>(`/risks/${id}`) })
 export const heatmapQuery = () => queryOptions({ queryKey: ['risks', 'heatmap'], queryFn: () => api.get<Heatmap>('/risks/heatmap'), refetchInterval: 10_000 })
 export const riskAssessmentsQuery = () => queryOptions({ queryKey: ['risk-assessments'], queryFn: () => api.get<Items<RiskAssessmentRow>>('/risk-assessments') })
-export const vendorsQuery = (status?: string) =>
-  queryOptions({ queryKey: ['vendors', status ?? ''], queryFn: () => api.get<Items<Vendor>>(`/vendors${status ? `?status=${status}` : ''}`), placeholderData: keepPreviousData, refetchInterval: 10_000 })
+export const vendorsQuery = (status?: string, framework?: string) => {
+  const qs = new URLSearchParams()
+  if (status) qs.set('status', status)
+  if (framework) qs.set('framework', framework)
+  const q = qs.toString()
+  return queryOptions({ queryKey: ['vendors', status ?? '', framework ?? ''], queryFn: () => api.get<Items<Vendor>>(`/vendors${q ? `?${q}` : ''}`), placeholderData: keepPreviousData, refetchInterval: 10_000 })
+}
+export const questionnaireLibraryQuery = () => queryOptions({ queryKey: ['questionnaire-library'], queryFn: () => api.get<Items<QuestionnaireSummary>>('/questionnaire-library') })
 export const vendorQuery = (id: string) =>
   queryOptions({
     queryKey: ['vendor', id],

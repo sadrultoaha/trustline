@@ -667,7 +667,7 @@ func (s *Service) AIDraftVersion(ctx context.Context, svc *ai.Service, orgID, ve
 		}
 	}
 	rows.Close()
-	frows, err := s.Pool.Query(ctx, `SELECT f.name FROM org_frameworks o JOIN catalog_frameworks f ON f.id = o.framework_id WHERE o.org_id = $1 ORDER BY f.position`, orgID)
+	frows, err := s.Pool.Query(ctx, `SELECT f.name FROM org_frameworks o JOIN framework_defs f ON f.id = o.framework_id AND (f.org_id IS NULL OR f.org_id = o.org_id) WHERE o.org_id = $1 ORDER BY f.position, lower(f.name)`, orgID)
 	if err != nil {
 		return nil, err
 	}

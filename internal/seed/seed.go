@@ -476,7 +476,7 @@ func seedPhase3(ctx context.Context, comp *compliance.Service, orgID domain.ID, 
 			return fmt.Errorf("ai risk assessment: %w", err)
 		}
 	}
-	vendors, err := comp.ListVendors(ctx, orgID, "")
+	vendors, err := comp.ListVendors(ctx, orgID, compliance.VendorFilter{})
 	if err != nil {
 		return err
 	}
@@ -486,7 +486,8 @@ func seedPhase3(ctx context.Context, comp *compliance.Service, orgID domain.ID, 
 	}
 	if _, ok := have["Northwind Cloud Storage"]; !ok {
 		v, err := comp.CreateVendor(ctx, orgID, compliance.VendorInput{Name: ptr("Northwind Cloud Storage"), Domain: ptr("northwind.example"), Category: ptr("Storage"),
-			Description: ptr("Encrypted object storage for customer file uploads."), DataAccess: ptr("confidential"), HandlesPII: ptr(true), OwnerMembershipID: ptr(members["grace@acme.test"].String())}, actor)
+			Description: ptr("Encrypted object storage for customer file uploads."), DataAccess: ptr("confidential"), HandlesPII: ptr(true), OwnerMembershipID: ptr(members["grace@acme.test"].String()),
+			Frameworks: &[]string{"soc2", "iso27001"}}, actor)
 		if err != nil {
 			return err
 		}

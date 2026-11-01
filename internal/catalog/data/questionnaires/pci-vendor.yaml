@@ -1,0 +1,13 @@
+id: pci-vendor-v1
+title: PCI DSS Service Provider Questionnaire
+description: Questions for service providers that store, process or transmit cardholder data, or can affect its security.
+frameworks: [pci_dss]
+questions:
+  - {id: pci_aoc, section: Compliance status, type: yes_no, question: "Can you provide a current PCI DSS Attestation of Compliance (AOC) for the services you provide to us?"}
+  - {id: pci_level, section: Compliance status, type: choice, options: [Level 1, Level 2, Not assessed], question: "Which PCI DSS service provider level are you validated at?"}
+  - {id: pci_scope, section: Compliance status, type: text, question: "Which of your services are in the scope of your PCI DSS assessment?"}
+  - {id: pci_responsibility_matrix, section: Shared responsibility, type: yes_no, question: "Will you give us a written matrix of which PCI DSS requirements you manage and which we manage?"}
+  - {id: pci_chd_storage, section: Cardholder data, type: yes_no, question: "Do you avoid storing sensitive authentication data (full track, CVV, PIN) after authorization?"}
+  - {id: pci_asv_scans, section: Testing, type: yes_no, question: "Do you run quarterly external vulnerability scans by an Approved Scanning Vendor?"}
+  - {id: pci_segmentation, section: Testing, type: yes_no, question: "Do you test network segmentation of the cardholder data environment at least every six months?"}
+  - {id: pci_acknowledgement, section: Shared responsibility, type: yes_no, question: "Will you acknowledge in writing that you are responsible for the security of the cardholder data you handle for us?"}

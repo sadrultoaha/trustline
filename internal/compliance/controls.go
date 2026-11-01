@@ -46,9 +46,9 @@ const controlSelect = `
 SELECT c.id, c.code, c.name, c.domain, c.description, c.evidence_mode, c.status, c.status_reason, c.status_changed_at,
        m.id, u.name, u.email,
        COALESCE((SELECT array_agg(DISTINCT r.framework_id ORDER BY r.framework_id)
-                 FROM catalog_requirement_controls rc JOIN catalog_requirements r ON r.id = rc.requirement_id
+                 FROM requirement_control_defs rc JOIN requirement_defs r ON r.id = rc.requirement_id
                  JOIN org_frameworks ofw ON ofw.framework_id = r.framework_id AND ofw.org_id = c.org_id
-                 WHERE rc.control_code = c.code), '{}'),
+                 WHERE rc.control_code = c.code AND (r.org_id IS NULL OR r.org_id = c.org_id)), '{}'),
        (SELECT count(*) FROM tests t WHERE t.org_id = c.org_id AND t.control_id = c.id AND t.enabled AND t.last_status <> 'na'),
        (SELECT count(*) FROM tests t WHERE t.org_id = c.org_id AND t.control_id = c.id AND t.enabled AND t.last_status IN ('fail','error')),
        (SELECT count(*) FROM evidence e WHERE e.org_id = c.org_id AND e.control_id = c.id AND ` + validEvidence + `)
@@ -91,7 +91,7 @@ func (s *Service) ListControls(ctx context.Context, orgID domain.ID, f ControlFi
 	where := []string{"c.org_id = $1"}
 	if f.FrameworkID != "" {
 		args = append(args, f.FrameworkID)
-		where = append(where, fmt.Sprintf(`c.code IN (SELECT rc.control_code FROM catalog_requirement_controls rc JOIN catalog_requirements r ON r.id = rc.requirement_id WHERE r.framework_id = $%d)`, len(args)))
+		where = append(where, fmt.Sprintf(`c.code IN (SELECT rc.control_code FROM requirement_control_defs rc JOIN requirement_defs r ON r.id = rc.requirement_id WHERE r.framework_id = $%d AND (r.org_id IS NULL OR r.org_id = $1))`, len(args)))
 	}
 	if f.Status != "" {
 		args = append(args, f.Status)
@@ -152,12 +152,12 @@ func (s *Service) GetControl(ctx context.Context, orgID, id domain.ID) (*Control
 		d.EvidenceHint, d.EvidenceTTLDays = cat.EvidenceHint, cat.EvidenceTTLDays
 	}
 	rows, err := s.Pool.Query(ctx, `SELECT f.id, f.name, (ofw.org_id IS NOT NULL), r.code, r.title
-		FROM catalog_requirement_controls rc
-		JOIN catalog_requirements r ON r.id = rc.requirement_id
-		JOIN catalog_frameworks f ON f.id = r.framework_id
+		FROM requirement_control_defs rc
+		JOIN requirement_defs r ON r.id = rc.requirement_id
+		JOIN framework_defs f ON f.id = r.framework_id
 		LEFT JOIN org_frameworks ofw ON ofw.framework_id = f.id AND ofw.org_id = $1
-		WHERE rc.control_code = $2
-		ORDER BY (ofw.org_id IS NULL), f.position, r.position`, orgID, c.Code)
+		WHERE rc.control_code = $2 AND (f.org_id IS NULL OR f.org_id = $1)
+		ORDER BY (ofw.org_id IS NULL), f.position, lower(f.name), r.position`, orgID, c.Code)
 	if err != nil {
 		return nil, err
 	}

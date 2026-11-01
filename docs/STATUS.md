@@ -35,6 +35,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏸ deferred (reason in D
 |---|---|---|
 | Frameworks seeded as data: SOC 2 (all 5 TSC, 61), ISO 27001:2022 Annex A (93), HIPAA Security Rule (50), GDPR (29), PCI DSS 4.0 subset (55), NIST AI RMF (72), ISO 42001 (38) | ✅ | `internal/catalog/data/frameworks` |
 | Crosswalk: one control → requirements in many frameworks | ✅ | 95 controls |
+| Custom frameworks: org-authored requirements mapped to the control library; create, edit, delete, adopt | ✅ | `custom_*` tables; see DECISIONS |
 | Automated test library: 120 declarative tests across 6 connectors | ✅ | validated against resource schemas in CI |
 | Test engine: all/any/none/count, where filters, nested AND/OR/NOT, 15 operators, fan-out paths, failure reasons | ✅ | `internal/testengine` |
 | Connector interface + registry + credential schemas, credentials encrypted (AES-256-GCM) | ✅ | |
@@ -97,6 +98,7 @@ Legend: ✅ done · 🟡 partial · ⬜ not started · ⏸ deferred (reason in D
 | Tiering (critical/high/medium/low), data access, PII, owner, review cycle by tier | ✅ | |
 | Document upload (SOC 2 I/II, ISO 27001, pen test, DPA, BAA, insurance, other) with expiry | ✅ | blob storage |
 | Security questionnaire (20 questions) by magic link, public vendor portal, save draft + submit | ✅ | token hashed, 30-day expiry, rate limited |
+| Vendor onboarding: map vendors to in-scope frameworks; attach questionnaires (general, HIPAA, GDPR, PCI DSS, AI, or generated from a custom framework); sent as one bundle with questions frozen at send time | ✅ | `vendor_frameworks`, `vendor_questionnaire_templates`; see DECISIONS |
 | AI vendor review of a SOC 2 report or questionnaire answers: opinion, controls tested, exceptions, CUECs, subservice orgs, risk summary, recommended tier | ✅ | `vendor_assessment.v1`; PDF text from `internal/pdftext` |
 | Acceptance: sample SOC 2 PDF in `/testdata` → assessment with page and section citations | ✅ | Go `TestVendorSOC2AssessmentWithCitations`, E2E `11-vendors` |
 | Cross-tenant tests for Phase 3 endpoints (including the portal token) | ✅ | `TestPhase3TenantIsolation` |

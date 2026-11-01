@@ -56,11 +56,12 @@ type VendorAssessment struct {
 }
 
 type VendorAssessmentInput struct {
-	VendorName   string `json:"vendor_name"`
-	DocumentKind string `json:"document_kind"`
-	DataAccess   string `json:"data_access"`
-	HandlesPII   bool   `json:"handles_pii"`
-	Answers      string `json:"answers"` // questionnaire answers as text, when assessing a questionnaire
+	VendorName   string   `json:"vendor_name"`
+	DocumentKind string   `json:"document_kind"`
+	DataAccess   string   `json:"data_access"`
+	HandlesPII   bool     `json:"handles_pii"`
+	Answers      string   `json:"answers"`              // questionnaire answers as text, when assessing a questionnaire
+	Frameworks   []string `json:"frameworks,omitempty"` // frameworks the vendor supports for the customer
 }
 
 func citationSchema() map[string]any {

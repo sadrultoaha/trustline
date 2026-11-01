@@ -335,6 +335,11 @@ YAML on every boot. Adopting a framework creates org `controls` for every contro
 framework maps to (existing controls are reused, which is how the crosswalk carries readiness).
 Connecting an integration instantiates org `tests` for every catalog test whose connector matches
 and whose control is in scope. One integration per connector type per org.
+Orgs can also write custom frameworks (`custom_frameworks`, `custom_requirements`,
+`custom_requirement_controls`, ids prefixed `custom-`). Their requirements map to catalog control
+codes, so adoption and readiness work the same way. The `framework_defs`, `requirement_defs` and
+`requirement_control_defs` views union catalog and custom rows; readers filter them on
+`org_id IS NULL OR org_id = <tenant>`.
 
 **Control status** (`compliance.deriveStatus`):
 

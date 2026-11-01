@@ -51,6 +51,7 @@ type Vendor struct {
 	HasReport       bool       `json:"has_security_report"`
 	HasDPA          bool       `json:"has_dpa"`
 	Documents       int        `json:"documents"`
+	Frameworks      []string   `json:"frameworks"`
 }
 
 const vendorSelect = `SELECT v.id, v.name, v.domain, v.description, v.category, v.status, v.tier, v.data_access, v.handles_pii, m.id, u.name, u.email,
@@ -58,7 +59,8 @@ const vendorSelect = `SELECT v.id, v.name, v.domain, v.description, v.category, 
   v.discovered_at, v.created_at,
   EXISTS(SELECT 1 FROM vendor_documents d WHERE d.vendor_id = v.id AND d.kind IN ('soc2_type2','soc2_type1','iso27001') AND (d.expires_at IS NULL OR d.expires_at > now())),
   EXISTS(SELECT 1 FROM vendor_documents d WHERE d.vendor_id = v.id AND d.kind IN ('dpa','baa')),
-  (SELECT count(*) FROM vendor_documents d WHERE d.vendor_id = v.id)
+  (SELECT count(*) FROM vendor_documents d WHERE d.vendor_id = v.id),
+  COALESCE((SELECT array_agg(vf.framework_id ORDER BY vf.created_at, vf.framework_id) FROM vendor_frameworks vf WHERE vf.vendor_id = v.id), '{}')
 FROM vendors v
 LEFT JOIN org_memberships m ON m.id = v.owner_membership_id AND m.org_id = v.org_id
 LEFT JOIN users u ON u.id = m.user_id`
@@ -69,7 +71,7 @@ func scanVendor(row pgx.Row) (*Vendor, error) {
 	var mname, memail *string
 	if err := row.Scan(&v.ID, &v.Name, &v.Domain, &v.Description, &v.Category, &v.Status, &v.Tier, &v.DataAccess, &v.HandlesPII, &mid, &mname, &memail,
 		&v.Source, &v.DiscoveryRef, &v.DiscoveryUsers, &v.DiscoveryNote, &v.RecommendedTier, &v.RiskSummary, &v.ReviewCycleDays, &v.NextReviewAt, &v.LastReviewedAt,
-		&v.DiscoveredAt, &v.CreatedAt, &v.HasReport, &v.HasDPA, &v.Documents); err != nil {
+		&v.DiscoveredAt, &v.CreatedAt, &v.HasReport, &v.HasDPA, &v.Documents, &v.Frameworks); err != nil {
 		if db.IsNoRows(err) {
 			return nil, domain.ErrNotFound
 		}
@@ -82,14 +84,23 @@ func scanVendor(row pgx.Row) (*Vendor, error) {
 	return &v, nil
 }
 
-func (s *Service) ListVendors(ctx context.Context, orgID domain.ID, status string) ([]Vendor, error) {
+type VendorFilter struct {
+	Status      string
+	FrameworkID string
+}
+
+func (s *Service) ListVendors(ctx context.Context, orgID domain.ID, f VendorFilter) ([]Vendor, error) {
 	args := []any{orgID}
 	where := " WHERE v.org_id = $1"
-	if status != "" {
-		args = append(args, status)
-		where += " AND v.status = $2"
+	if f.Status != "" {
+		args = append(args, f.Status)
+		where += fmt.Sprintf(" AND v.status = $%d", len(args))
 	} else {
 		where += " AND v.status <> 'dismissed'"
+	}
+	if f.FrameworkID != "" {
+		args = append(args, f.FrameworkID)
+		where += fmt.Sprintf(" AND EXISTS (SELECT 1 FROM vendor_frameworks vf WHERE vf.vendor_id = v.id AND vf.framework_id = $%d)", len(args))
 	}
 	rows, err := s.Pool.Query(ctx, vendorSelect+where+` ORDER BY CASE v.tier WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END, lower(v.name)`, args...)
 	if err != nil {
@@ -121,15 +132,16 @@ type VendorDocument struct {
 }
 
 type VendorQuestionnaire struct {
-	ID             domain.ID         `json:"id"`
-	TemplateID     string            `json:"template_id"`
-	RecipientEmail string            `json:"recipient_email"`
-	Status         string            `json:"status"`
-	Answers        map[string]string `json:"answers"`
-	SentAt         time.Time         `json:"sent_at"`
-	SubmittedAt    *time.Time        `json:"submitted_at,omitempty"`
-	ExpiresAt      time.Time         `json:"expires_at"`
-	Link           string            `json:"link,omitempty"` // only right after sending
+	ID             domain.ID                       `json:"id"`
+	TemplateID     string                          `json:"template_id"`
+	Templates      []catalog.QuestionnaireTemplate `json:"templates"` // the questions as sent
+	RecipientEmail string                          `json:"recipient_email"`
+	Status         string                          `json:"status"`
+	Answers        map[string]string               `json:"answers"`
+	SentAt         time.Time                       `json:"sent_at"`
+	SubmittedAt    *time.Time                      `json:"submitted_at,omitempty"`
+	ExpiresAt      time.Time                       `json:"expires_at"`
+	Link           string                          `json:"link,omitempty"` // only right after sending
 }
 
 type VendorAssessmentRow struct {
@@ -146,10 +158,14 @@ type VendorAssessmentRow struct {
 
 type VendorDetail struct {
 	Vendor
-	DocumentsList  []VendorDocument               `json:"documents_list"`
-	Questionnaires []VendorQuestionnaire          `json:"questionnaires"`
-	Assessments    []VendorAssessmentRow          `json:"assessments"`
-	Template       *catalog.QuestionnaireTemplate `json:"questionnaire_template,omitempty"`
+	DocumentsList  []VendorDocument      `json:"documents_list"`
+	Questionnaires []VendorQuestionnaire `json:"questionnaires"`
+	Assessments    []VendorAssessmentRow `json:"assessments"`
+	// QuestionnaireTemplates is what the next questionnaire will contain;
+	// QuestionnairesDefault is set when it follows the vendor's frameworks
+	// because none is attached explicitly.
+	QuestionnaireTemplates []QuestionnaireSummary `json:"questionnaire_templates"`
+	QuestionnairesDefault  bool                   `json:"questionnaires_default"`
 }
 
 func (s *Service) GetVendor(ctx context.Context, orgID, id domain.ID) (*VendorDetail, error) {
@@ -157,9 +173,17 @@ func (s *Service) GetVendor(ctx context.Context, orgID, id domain.ID) (*VendorDe
 	if err != nil {
 		return nil, err
 	}
-	d := &VendorDetail{Vendor: *v, DocumentsList: []VendorDocument{}, Questionnaires: []VendorQuestionnaire{}, Assessments: []VendorAssessmentRow{}}
-	if len(s.Catalog.VendorQuestionnaires) > 0 {
-		d.Template = &s.Catalog.VendorQuestionnaires[0]
+	d := &VendorDetail{Vendor: *v, DocumentsList: []VendorDocument{}, Questionnaires: []VendorQuestionnaire{}, Assessments: []VendorAssessmentRow{}, QuestionnaireTemplates: []QuestionnaireSummary{}}
+	ids, def, err := s.effectiveQuestionnaires(ctx, s.Pool, orgID, id, v.Frameworks)
+	if err != nil {
+		return nil, err
+	}
+	d.QuestionnairesDefault = def
+	for _, qid := range ids {
+		// Resolve one at a time so a template that disappeared does not hide the rest.
+		if t, err := s.resolveQuestionnaires(ctx, s.Pool, orgID, []string{qid}); err == nil {
+			d.QuestionnaireTemplates = append(d.QuestionnaireTemplates, summarize(t[0], strings.HasPrefix(qid, generatedPrefix)))
+		}
 	}
 	rows, err := s.Pool.Query(ctx, `SELECT d.id, d.kind, d.title, d.filename, d.content_type, d.size_bytes, d.sha256, d.expires_at, COALESCE(u.email,''), d.created_at
 		FROM vendor_documents d LEFT JOIN users u ON u.id = d.uploaded_by WHERE d.org_id = $1 AND d.vendor_id = $2 ORDER BY d.created_at DESC`, orgID, id)
@@ -175,18 +199,19 @@ func (s *Service) GetVendor(ctx context.Context, orgID, id domain.ID) (*VendorDe
 		d.DocumentsList = append(d.DocumentsList, x)
 	}
 	rows.Close()
-	rows, err = s.Pool.Query(ctx, `SELECT id, template_id, recipient_email, status, answers, sent_at, submitted_at, expires_at FROM vendor_questionnaires WHERE org_id = $1 AND vendor_id = $2 ORDER BY sent_at DESC`, orgID, id)
+	rows, err = s.Pool.Query(ctx, `SELECT id, template_id, recipient_email, status, answers, questions, sent_at, submitted_at, expires_at FROM vendor_questionnaires WHERE org_id = $1 AND vendor_id = $2 ORDER BY sent_at DESC`, orgID, id)
 	if err != nil {
 		return nil, err
 	}
 	for rows.Next() {
 		var q VendorQuestionnaire
-		var raw []byte
-		if err := rows.Scan(&q.ID, &q.TemplateID, &q.RecipientEmail, &q.Status, &raw, &q.SentAt, &q.SubmittedAt, &q.ExpiresAt); err != nil {
+		var raw, questions []byte
+		if err := rows.Scan(&q.ID, &q.TemplateID, &q.RecipientEmail, &q.Status, &raw, &questions, &q.SentAt, &q.SubmittedAt, &q.ExpiresAt); err != nil {
 			rows.Close()
 			return nil, err
 		}
 		_ = json.Unmarshal(raw, &q.Answers)
+		q.Templates = s.sentTemplates(questions, q.TemplateID)
 		if q.Status != "submitted" && q.ExpiresAt.Before(time.Now()) {
 			q.Status = "expired"
 		}
@@ -216,15 +241,19 @@ func (s *Service) GetVendor(ctx context.Context, orgID, id domain.ID) (*VendorDe
 }
 
 type VendorInput struct {
-	Name              *string `json:"name"`
-	Domain            *string `json:"domain"`
-	Description       *string `json:"description"`
-	Category          *string `json:"category"`
-	Tier              *string `json:"tier"`
-	DataAccess        *string `json:"data_access"`
-	HandlesPII        *bool   `json:"handles_pii"`
-	OwnerMembershipID *string `json:"owner_membership_id"`
-	Status            *string `json:"status"`
+	Name *string `json:"name"`
+	// Frameworks and Questionnaires replace the vendor's mapping and attached
+	// questionnaires when present.
+	Frameworks        *[]string `json:"frameworks"`
+	Questionnaires    *[]string `json:"questionnaires"`
+	Domain            *string   `json:"domain"`
+	Description       *string   `json:"description"`
+	Category          *string   `json:"category"`
+	Tier              *string   `json:"tier"`
+	DataAccess        *string   `json:"data_access"`
+	HandlesPII        *bool     `json:"handles_pii"`
+	OwnerMembershipID *string   `json:"owner_membership_id"`
+	Status            *string   `json:"status"`
 }
 
 func (in VendorInput) validate(creating bool) error {
@@ -283,7 +312,11 @@ func (s *Service) CreateVendor(ctx context.Context, orgID domain.ID, in VendorIn
 			}
 			return err
 		}
-		if err := activity.Record(ctx, tx, orgID, actor, activity.Entry{Action: "vendor.created", TargetType: "vendor", TargetID: id.String(), TargetLabel: *in.Name}); err != nil {
+		scope := map[string]any{}
+		if err := s.setVendorScope(ctx, tx, orgID, id, in.Frameworks, in.Questionnaires, scope); err != nil {
+			return err
+		}
+		if err := activity.Record(ctx, tx, orgID, actor, activity.Entry{Action: "vendor.created", TargetType: "vendor", TargetID: id.String(), TargetLabel: *in.Name, Metadata: scope}); err != nil {
 			return err
 		}
 		return s.touchPlatform(ctx, tx, orgID)
@@ -349,6 +382,9 @@ func (s *Service) UpdateVendor(ctx context.Context, orgID, id domain.ID, in Vend
 					return err
 				}
 			}
+		}
+		if err := s.setVendorScope(ctx, tx, orgID, id, in.Frameworks, in.Questionnaires, changes); err != nil {
+			return err
 		}
 		if err := activity.Record(ctx, tx, orgID, actor, activity.Entry{Action: "vendor.updated", TargetType: "vendor", TargetID: id.String(), TargetLabel: cur.Name, Metadata: changes}); err != nil {
 			return err
@@ -581,7 +617,7 @@ func (s *Service) RunVendorAssessment(ctx context.Context, svc *ai.Service, orgI
 	if err != nil {
 		return err
 	}
-	in := ai.VendorAssessmentInput{VendorName: v.Name, DataAccess: v.DataAccess, HandlesPII: v.HandlesPII}
+	in := ai.VendorAssessmentInput{VendorName: v.Name, DataAccess: v.DataAccess, HandlesPII: v.HandlesPII, Frameworks: s.frameworkNames(ctx, orgID, v.Frameworks)}
 	var att *ai.Attachment
 	if docID != nil {
 		var key, ctype, fname, kind string
@@ -595,14 +631,15 @@ func (s *Service) RunVendorAssessment(ctx context.Context, svc *ai.Service, orgI
 		in.DocumentKind = kind
 		att = &ai.Attachment{Filename: fname, MediaType: ctype, Data: data}
 	} else if qID != nil {
-		var raw []byte
-		if err := s.Pool.QueryRow(ctx, `SELECT answers FROM vendor_questionnaires WHERE org_id = $1 AND id = $2`, orgID, *qID).Scan(&raw); err != nil {
+		var raw, questions []byte
+		var tplID string
+		if err := s.Pool.QueryRow(ctx, `SELECT answers, questions, template_id FROM vendor_questionnaires WHERE org_id = $1 AND id = $2`, orgID, *qID).Scan(&raw, &questions, &tplID); err != nil {
 			return err
 		}
 		var answers map[string]string
 		_ = json.Unmarshal(raw, &answers)
 		in.DocumentKind = "questionnaire"
-		in.Answers = s.answersText(answers)
+		in.Answers = answersText(s.sentTemplates(questions, tplID), answers)
 	}
 	res, model, err := svc.AssessVendor(ctx, orgID, in, att)
 	return db.Tx(ctx, s.Pool, func(tx pgx.Tx) error {
@@ -637,13 +674,12 @@ func (s *Service) RunVendorAssessment(ctx context.Context, svc *ai.Service, orgI
 	})
 }
 
-func (s *Service) answersText(answers map[string]string) string {
-	if len(s.Catalog.VendorQuestionnaires) == 0 {
-		return ""
-	}
+func answersText(tpls []catalog.QuestionnaireTemplate, answers map[string]string) string {
 	var b strings.Builder
-	for _, q := range s.Catalog.VendorQuestionnaires[0].Questions {
-		fmt.Fprintf(&b, "%s: %s\n", q.Question, answers[q.ID])
+	for _, t := range tpls {
+		for _, q := range t.Questions {
+			fmt.Fprintf(&b, "%s: %s\n", q.Question, answers[q.ID])
+		}
 	}
 	return b.String()
 }
@@ -709,16 +745,14 @@ func (s *Service) SendQuestionnaire(ctx context.Context, orgID, vendorID domain.
 	if !strings.Contains(email, "@") {
 		return nil, domain.Invalid("recipient_email", "a valid email is required")
 	}
-	if len(s.Catalog.VendorQuestionnaires) == 0 {
-		return nil, domain.Invalid("template", "no questionnaire template available")
-	}
-	tpl := s.Catalog.VendorQuestionnaires[0]
 	token, hash, err := auth.NewToken()
 	if err != nil {
 		return nil, err
 	}
 	id := domain.NewID()
 	link := s.BaseURL + "/vendor-portal/" + token
+	var tpls []catalog.QuestionnaireTemplate
+	var tplIDs []string
 	err = db.Tx(ctx, s.Pool, func(tx pgx.Tx) error {
 		var name string
 		if err := tx.QueryRow(ctx, `SELECT name FROM vendors WHERE org_id = $1 AND id = $2`, orgID, vendorID).Scan(&name); err != nil {
@@ -727,49 +761,71 @@ func (s *Service) SendQuestionnaire(ctx context.Context, orgID, vendorID domain.
 			}
 			return err
 		}
+		fws, err := s.vendorFrameworks(ctx, tx, orgID, vendorID)
+		if err != nil {
+			return err
+		}
+		if tplIDs, _, err = s.effectiveQuestionnaires(ctx, tx, orgID, vendorID, fws); err != nil {
+			return err
+		}
+		if tpls, err = s.resolveQuestionnaires(ctx, tx, orgID, tplIDs); err != nil {
+			return err
+		}
+		if len(tpls) == 0 {
+			return domain.Invalid("questionnaires", "attach at least one questionnaire to this vendor")
+		}
+		snapshot, err := json.Marshal(tpls)
+		if err != nil {
+			return err
+		}
+		titles := make([]string, len(tpls))
+		for i, t := range tpls {
+			titles[i] = t.Title
+		}
 		o, err := org.New(s.Pool).Get(ctx, tx, orgID)
 		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO vendor_questionnaires (id, org_id, vendor_id, template_id, token_hash, recipient_email, sent_by, expires_at)
-			VALUES ($1,$2,$3,$4,$5,$6,$7, now() + interval '30 days')`, id, orgID, vendorID, tpl.ID, hash, email, actor.ID); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO vendor_questionnaires (id, org_id, vendor_id, template_id, token_hash, recipient_email, sent_by, expires_at, questions)
+			VALUES ($1,$2,$3,$4,$5,$6,$7, now() + interval '30 days', $8)`, id, orgID, vendorID, strings.Join(tplIDs, ","), hash, email, actor.ID, snapshot); err != nil {
 			return err
 		}
 		html, text := mail.Render(mail.TemplateData{Title: o.Name + " requests a security review",
-			Body:      fmt.Sprintf("%s uses %s and asks you to complete a %d-question security questionnaire. No account is needed; you can save and come back. The link expires in 30 days.", o.Name, name, len(tpl.Questions)),
+			Body: fmt.Sprintf("%s uses %s and asks you to complete a %d-question security review (%s). No account is needed; you can save and come back. The link expires in 30 days.",
+				o.Name, name, countQuestions(tpls), strings.Join(titles, ", ")),
 			ActionURL: link, ActionLabel: "Open questionnaire", Footer: "Sent via Trustline on behalf of " + o.Name + "."})
 		if err := s.Jobs.EnqueueTx(ctx, tx, jobs.SendEmailArgs{To: email, Subject: "Security questionnaire from " + o.Name, HTML: html, Text: text}); err != nil {
 			return err
 		}
-		return activity.Record(ctx, tx, orgID, actor, activity.Entry{Action: "vendor.questionnaire_sent", TargetType: "vendor", TargetID: vendorID.String(), TargetLabel: name, Metadata: map[string]any{"to": email}})
+		return activity.Record(ctx, tx, orgID, actor, activity.Entry{Action: "vendor.questionnaire_sent", TargetType: "vendor", TargetID: vendorID.String(), TargetLabel: name, Metadata: map[string]any{"to": email, "questionnaires": tplIDs}})
 	})
 	if err != nil {
 		return nil, err
 	}
-	return &VendorQuestionnaire{ID: id, TemplateID: tpl.ID, RecipientEmail: email, Status: "sent", Answers: map[string]string{}, SentAt: time.Now(), ExpiresAt: time.Now().Add(30 * 24 * time.Hour), Link: link}, nil
+	return &VendorQuestionnaire{ID: id, TemplateID: strings.Join(tplIDs, ","), Templates: tpls, RecipientEmail: email, Status: "sent", Answers: map[string]string{}, SentAt: time.Now(), ExpiresAt: time.Now().Add(30 * 24 * time.Hour), Link: link}, nil
 }
 
 type PortalView struct {
-	OrgName    string                        `json:"org_name"`
-	VendorName string                        `json:"vendor_name"`
-	Status     string                        `json:"status"`
-	ExpiresAt  time.Time                     `json:"expires_at"`
-	Template   catalog.QuestionnaireTemplate `json:"template"`
-	Answers    map[string]string             `json:"answers"`
+	OrgName    string                          `json:"org_name"`
+	VendorName string                          `json:"vendor_name"`
+	Status     string                          `json:"status"`
+	ExpiresAt  time.Time                       `json:"expires_at"`
+	Templates  []catalog.QuestionnaireTemplate `json:"templates"`
+	Answers    map[string]string               `json:"answers"`
 }
 
 func (s *Service) portalLookup(ctx context.Context, q db.Querier, token string, lock bool) (*PortalView, domain.ID, domain.ID, domain.ID, error) {
 	var pv PortalView
 	var qid, orgID, vendorID domain.ID
-	var raw []byte
+	var raw, questions []byte
 	var tplID string
 	suffix := ""
 	if lock {
 		suffix = " FOR UPDATE OF q"
 	}
-	err := q.QueryRow(ctx, `SELECT q.id, q.org_id, q.vendor_id, o.name, v.name, q.status, q.expires_at, q.template_id, q.answers
+	err := q.QueryRow(ctx, `SELECT q.id, q.org_id, q.vendor_id, o.name, v.name, q.status, q.expires_at, q.template_id, q.answers, q.questions
 		FROM vendor_questionnaires q JOIN orgs o ON o.id = q.org_id JOIN vendors v ON v.id = q.vendor_id WHERE q.token_hash = $1`+suffix, auth.HashToken(token)).
-		Scan(&qid, &orgID, &vendorID, &pv.OrgName, &pv.VendorName, &pv.Status, &pv.ExpiresAt, &tplID, &raw)
+		Scan(&qid, &orgID, &vendorID, &pv.OrgName, &pv.VendorName, &pv.Status, &pv.ExpiresAt, &tplID, &raw, &questions)
 	if err != nil {
 		if db.IsNoRows(err) {
 			return nil, qid, orgID, vendorID, domain.ErrNotFound
@@ -779,11 +835,7 @@ func (s *Service) portalLookup(ctx context.Context, q db.Querier, token string, 
 	if pv.Status != "submitted" && pv.ExpiresAt.Before(time.Now()) {
 		pv.Status = "expired"
 	}
-	for _, t := range s.Catalog.VendorQuestionnaires {
-		if t.ID == tplID {
-			pv.Template = t
-		}
-	}
+	pv.Templates = s.sentTemplates(questions, tplID)
 	_ = json.Unmarshal(raw, &pv.Answers)
 	if pv.Answers == nil {
 		pv.Answers = map[string]string{}
@@ -807,8 +859,12 @@ func (s *Service) PortalSave(ctx context.Context, token string, answers map[stri
 			return domain.Invalid("status", "this questionnaire is "+pv.Status)
 		}
 		valid := map[string]catalog.QuestionnaireQuestion{}
-		for _, q := range pv.Template.Questions {
-			valid[q.ID] = q
+		var all []catalog.QuestionnaireQuestion
+		for _, t := range pv.Templates {
+			for _, q := range t.Questions {
+				valid[q.ID] = q
+				all = append(all, q)
+			}
 		}
 		clean := map[string]string{}
 		for k, v := range answers {
@@ -823,11 +879,14 @@ func (s *Service) PortalSave(ctx context.Context, token string, answers map[stri
 			if q.Type == "yes_no" && v != "" && v != "Yes" && v != "No" {
 				return domain.Invalid(k, "answer Yes or No")
 			}
+			if q.Type == "choice" && v != "" && !oneOf(v, q.Options...) {
+				return domain.Invalid(k, "choose one of the listed options")
+			}
 			clean[k] = v
 		}
 		if submit {
 			var missing []string
-			for _, q := range pv.Template.Questions {
+			for _, q := range all {
 				if clean[q.ID] == "" {
 					missing = append(missing, q.ID)
 				}

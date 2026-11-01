@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePermissions } from '@/api/auth'
 import { errorMessage, isApiError } from '@/api/client'
+import { frameworksQuery } from '@/api/compliance'
 import { useCreateVendor, vendorsQuery, type Vendor } from '@/api/phase3'
 import { FormField } from '@/components/layout/FormField'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -19,10 +20,14 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { connectorName } from '@/lib/connectors'
 import { formatDate, timeAgo } from '@/lib/utils'
 import { TierBadge } from './vendorUi'
+import { scopeInput, VendorScopeFields, type VendorScope } from './VendorScopeFields'
 
 export function VendorsPage() {
   const [status, setStatus] = useState('active')
-  const { data } = useQuery(vendorsQuery(status === 'all' ? undefined : status))
+  const [framework, setFramework] = useState('')
+  const { data } = useQuery(vendorsQuery(status === 'all' ? undefined : status, framework || undefined))
+  const fws = useQuery(frameworksQuery()).data?.items ?? []
+  const names = Object.fromEntries(fws.map((f) => [f.id, f.name]))
   const discovered = useQuery(vendorsQuery('discovered'))
   const { can } = usePermissions()
   const [open, setOpen] = useState(false)
@@ -39,18 +44,30 @@ export function VendorsPage() {
           ) : null
         }
       />
-      <Tabs value={status} onValueChange={setStatus} className="mb-4">
-        <TabsList>
-          <TabsTrigger value="active">Inventory</TabsTrigger>
-          <TabsTrigger value="discovered" data-testid="vendors-tab-discovered">
-            Discovered ({discovered.data?.items.length ?? 0})
-          </TabsTrigger>
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="dismissed" data-testid="vendors-tab-dismissed">
-            Dismissed
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <Tabs value={status} onValueChange={setStatus}>
+          <TabsList>
+            <TabsTrigger value="active">Inventory</TabsTrigger>
+            <TabsTrigger value="discovered" data-testid="vendors-tab-discovered">
+              Discovered ({discovered.data?.items.length ?? 0})
+            </TabsTrigger>
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="dismissed" data-testid="vendors-tab-dismissed">
+              Dismissed
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <Select value={framework} onChange={(e) => setFramework(e.target.value)} className="w-52" data-testid="vendors-framework">
+          <option value="">All frameworks</option>
+          {fws
+            .filter((f) => f.adopted)
+            .map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+        </Select>
+      </div>
       <Card>
         <CardContent className="p-0">
           <Table data-testid="vendors-table">
@@ -66,7 +83,7 @@ export function VendorsPage() {
             </TableHeader>
             <TableBody>
               {data?.items.map((v) => (
-                <VendorRow key={v.id} v={v} />
+                <VendorRow key={v.id} v={v} names={names} />
               ))}
               {data && data.items.length === 0 ? (
                 <TableRow>
@@ -84,7 +101,7 @@ export function VendorsPage() {
   )
 }
 
-function VendorRow({ v }: { v: Vendor }) {
+function VendorRow({ v, names }: { v: Vendor; names: Record<string, string> }) {
   return (
     <TableRow data-testid={`vendor-row-${v.name}`}>
       <TableCell>
@@ -95,6 +112,15 @@ function VendorRow({ v }: { v: Vendor }) {
           {v.category || '—'} {v.domain ? `· ${v.domain}` : ''}
           {v.status === 'discovered' ? ` · via ${connectorName(v.source)} · ${v.discovery_users} user(s)` : ''}
         </div>
+        {v.frameworks.length ? (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {v.frameworks.map((f) => (
+              <Badge key={f} variant="outline" className="font-normal">
+                {names[f] ?? f}
+              </Badge>
+            ))}
+          </div>
+        ) : null}
       </TableCell>
       <TableCell>
         <TierBadge tier={v.tier} />
@@ -122,15 +148,16 @@ function NewVendorDialog({ onClose }: { onClose: () => void }) {
   const create = useCreateVendor()
   const navigate = useNavigate()
   const [f, setF] = useState({ name: '', domain: '', category: '', data_access: 'none', handles_pii: false })
+  const [scope, setScope] = useState<VendorScope>({ frameworks: [], questionnaires: null })
   const [fields, setFields] = useState<Record<string, string>>({})
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <form
           className="space-y-4"
           onSubmit={(e) => {
             e.preventDefault()
-            create.mutate(f, {
+            create.mutate({ ...f, ...scopeInput(scope) }, {
               onSuccess: (v) => {
                 onClose()
                 void navigate({ to: '/app/vendors/$id', params: { id: v.id } })
@@ -141,7 +168,7 @@ function NewVendorDialog({ onClose }: { onClose: () => void }) {
         >
           <DialogHeader>
             <DialogTitle>Add vendor</DialogTitle>
-            <DialogDescription>Tier it after uploading evidence — the AI review recommends a tier.</DialogDescription>
+            <DialogDescription>Map the vendor to the frameworks it supports and choose the questionnaires it must answer. Tier it after uploading evidence — the AI review recommends a tier.</DialogDescription>
           </DialogHeader>
           <FormField label="Name" htmlFor="vn" error={fields.name}>
             <Input id="vn" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} data-testid="vendor-name" />
@@ -164,6 +191,7 @@ function NewVendorDialog({ onClose }: { onClose: () => void }) {
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={f.handles_pii} onChange={(e) => setF({ ...f, handles_pii: e.target.checked })} data-testid="vendor-pii" /> Processes personal data
           </label>
+          <VendorScopeFields value={scope} onChange={setScope} errors={fields} />
           <DialogFooter>
             <Button type="submit" loading={create.isPending} data-testid="vendor-create">
               Add vendor

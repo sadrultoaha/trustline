@@ -2,7 +2,8 @@
 {{define "user"}}Vendor: {{.VendorName}}
 Document type declared by the uploader: {{.DocumentKind}}
 Data the vendor will access: {{.DataAccess}}{{if .HandlesPII}} (includes personal data){{end}}
-{{if .Answers}}
+{{if .Frameworks}}Frameworks this vendor is in scope for: {{range $i, $f := .Frameworks}}{{if $i}}, {{end}}{{$f}}{{end}}. Weigh gaps against these frameworks' requirements.
+{{end}}{{if .Answers}}
 Vendor questionnaire answers:
 {{.Answers}}
 {{end}}

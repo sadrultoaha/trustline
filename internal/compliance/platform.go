@@ -538,7 +538,7 @@ func (s *Service) riskAndVendorResources(ctx context.Context, q db.Querier, orgI
 		return err
 	}
 	res["risk_program"] = append(res["risk_program"], map[string]any{"id": "risk-management", "last_assessment_days": daysSince(last), "open_risks": open, "suggested_risks": suggested})
-	vendors, err := s.ListVendors(ctx, orgID, "")
+	vendors, err := s.ListVendors(ctx, orgID, VendorFilter{})
 	if err != nil {
 		return err
 	}

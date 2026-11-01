@@ -535,7 +535,7 @@ func (s *Service) CompleteWithAI(ctx context.Context, svc *ai.Service, orgID dom
 		}
 		return rows.Err()
 	}
-	if err := collect(`SELECT f.name FROM org_frameworks o JOIN catalog_frameworks f ON f.id = o.framework_id WHERE o.org_id = $1 ORDER BY f.position`, &in.Frameworks); err != nil {
+	if err := collect(`SELECT f.name FROM org_frameworks o JOIN framework_defs f ON f.id = o.framework_id AND (f.org_id IS NULL OR f.org_id = o.org_id) WHERE o.org_id = $1 ORDER BY f.position, lower(f.name)`, &in.Frameworks); err != nil {
 		return nil, "", err
 	}
 	if err := collect(`SELECT name FROM integrations WHERE org_id = $1 AND type <> 'trustline' ORDER BY name`, &in.Systems); err != nil {

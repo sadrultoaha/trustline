@@ -1,0 +1,15 @@
+id: hipaa-vendor-v1
+title: HIPAA Business Associate Questionnaire
+description: Safeguards we need from vendors that create, receive, maintain or transmit protected health information (PHI) on our behalf.
+frameworks: [hipaa]
+questions:
+  - {id: hipaa_baa, section: Agreements, type: yes_no, question: "Will you sign our business associate agreement (BAA)?"}
+  - {id: hipaa_subcontractor_baa, section: Agreements, type: yes_no, question: "Do you have BAAs in place with every subcontractor that handles our PHI?"}
+  - {id: hipaa_risk_analysis, section: Administrative safeguards, type: yes_no, question: "Have you completed a documented HIPAA security risk analysis in the last 12 months?"}
+  - {id: hipaa_security_officer, section: Administrative safeguards, type: text, question: "Who is your designated HIPAA security officer (name and contact)?"}
+  - {id: hipaa_workforce_training, section: Administrative safeguards, type: yes_no, question: "Do all staff with access to PHI complete HIPAA training at least annually?"}
+  - {id: hipaa_minimum_necessary, section: Technical safeguards, type: yes_no, question: "Is access to PHI limited to the minimum necessary for each role?"}
+  - {id: hipaa_audit_logs, section: Technical safeguards, type: yes_no, question: "Do you record and review audit logs of access to PHI?"}
+  - {id: hipaa_phi_encryption, section: Technical safeguards, type: yes_no, question: "Is PHI encrypted at rest and in transit?"}
+  - {id: hipaa_breach_notice, section: Breach notification, type: yes_no, question: "Will you notify us of a breach of unsecured PHI without unreasonable delay and within 60 days of discovery?"}
+  - {id: hipaa_phi_return, section: Breach notification, type: yes_no, question: "Will you return or destroy our PHI when the agreement ends?"}

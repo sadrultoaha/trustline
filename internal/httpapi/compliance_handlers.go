@@ -23,6 +23,11 @@ func (s *Server) mountCompliance(r chi.Router) {
 	r.With(read(rbac.ControlsRead)).Get("/frameworks/{id}", s.getFramework)
 	r.With(read(rbac.ControlsWrite)).Post("/frameworks/{id}/adopt", s.adoptFramework)
 	r.With(read(rbac.ControlsWrite)).Delete("/frameworks/{id}", s.removeFramework)
+	r.With(read(rbac.ControlsWrite)).Post("/frameworks", s.createCustomFramework)
+	r.With(read(rbac.ControlsRead)).Get("/frameworks/{id}/definition", s.getCustomFramework)
+	r.With(read(rbac.ControlsWrite)).Put("/frameworks/{id}/definition", s.updateCustomFramework)
+	r.With(read(rbac.ControlsWrite)).Delete("/frameworks/{id}/definition", s.deleteCustomFramework)
+	r.With(read(rbac.ControlsRead)).Get("/control-library", s.controlLibrary)
 
 	r.With(read(rbac.ControlsRead)).Get("/controls", s.listControls)
 	r.With(read(rbac.ControlsRead)).Get("/controls/{id}", s.getControl)
@@ -107,6 +112,52 @@ func (s *Server) adoptFramework(w http.ResponseWriter, r *http.Request) {
 func (s *Server) removeFramework(w http.ResponseWriter, r *http.Request) {
 	err := s.comp.RemoveFramework(r.Context(), TenantFrom(r.Context()).OrgID, chi.URLParam(r, "id"), actorFrom(r))
 	s.respond(w, r, 200, map[string]bool{"ok": true}, err)
+}
+
+func (s *Server) createCustomFramework(w http.ResponseWriter, r *http.Request) {
+	var in compliance.CustomFrameworkInput
+	if err := decode(r, &in); err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	t := TenantFrom(r.Context())
+	id, err := s.comp.CreateCustomFramework(r.Context(), t.OrgID, in, actorFrom(r))
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	d, err := s.comp.GetFramework(r.Context(), t.OrgID, id)
+	s.respond(w, r, 201, d, err)
+}
+
+func (s *Server) getCustomFramework(w http.ResponseWriter, r *http.Request) {
+	d, err := s.comp.GetCustomFramework(r.Context(), TenantFrom(r.Context()).OrgID, chi.URLParam(r, "id"))
+	s.respond(w, r, 200, d, err)
+}
+
+func (s *Server) updateCustomFramework(w http.ResponseWriter, r *http.Request) {
+	var in compliance.CustomFrameworkInput
+	if err := decode(r, &in); err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	t := TenantFrom(r.Context())
+	id := chi.URLParam(r, "id")
+	if err := s.comp.UpdateCustomFramework(r.Context(), t.OrgID, id, in, actorFrom(r)); err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	d, err := s.comp.GetFramework(r.Context(), t.OrgID, id)
+	s.respond(w, r, 200, d, err)
+}
+
+func (s *Server) deleteCustomFramework(w http.ResponseWriter, r *http.Request) {
+	err := s.comp.DeleteCustomFramework(r.Context(), TenantFrom(r.Context()).OrgID, chi.URLParam(r, "id"), actorFrom(r))
+	s.respond(w, r, 200, map[string]bool{"ok": true}, err)
+}
+
+func (s *Server) controlLibrary(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, 200, map[string]any{"items": s.comp.ControlLibrary()})
 }
 
 // --- controls & evidence ------------------------------------------------------

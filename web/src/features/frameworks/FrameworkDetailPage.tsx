@@ -1,17 +1,19 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { CheckCircle2, ChevronDown, ChevronRight, XCircle } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronRight, Pencil, Trash2, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePermissions } from '@/api/auth'
 import { errorMessage } from '@/api/client'
-import { frameworkQuery, useAdoptFramework, useRemoveFramework, type SectionView } from '@/api/compliance'
+import { frameworkDefinitionQuery, frameworkQuery, useAdoptFramework, useDeleteCustomFramework, useRemoveFramework, type SectionView } from '@/api/compliance'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ControlStatusBadge } from '@/components/status'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
+import { CustomFrameworkDialog } from './CustomFrameworkDialog'
 
 export function FrameworkDetailPage() {
   const { id } = useParams({ from: '/app/frameworks/$id' })
@@ -21,37 +23,53 @@ export function FrameworkDetailPage() {
   const remove = useRemoveFramework()
   const navigate = useNavigate()
   const [onlyGaps, setOnlyGaps] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   if (!f) return <p className="text-sm text-muted-foreground">Loading…</p>
   const r = f.readiness
   return (
     <div>
       <PageHeader
         title={f.name}
-        description={`${f.publisher} · ${f.version}`}
+        description={[f.custom ? 'Custom framework' : '', f.publisher, f.version].filter(Boolean).join(' · ')}
         actions={
           can('controls:write') ? (
-            f.adopted ? (
-              <Button
-                variant="outline"
-                onClick={() =>
-                  remove.mutate(f.id, {
-                    onSuccess: () => {
-                      toast.success(`${f.name} removed from scope`)
-                      void navigate({ to: '/app/frameworks' })
-                    },
-                  })
-                }
-              >
-                Remove from scope
-              </Button>
-            ) : (
-              <Button loading={adopt.isPending} onClick={() => adopt.mutate(f.id, { onError: (e) => toast.error(errorMessage(e)) })} data-testid="framework-adopt">
-                Add to scope
-              </Button>
-            )
+            <>
+              {f.custom ? (
+                <>
+                  <Button variant="outline" onClick={() => setEditing(true)} data-testid="framework-edit">
+                    <Pencil /> Edit
+                  </Button>
+                  <Button variant="outline" onClick={() => setDeleting(true)} data-testid="framework-delete">
+                    <Trash2 /> Delete
+                  </Button>
+                </>
+              ) : null}
+              {f.adopted ? (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    remove.mutate(f.id, {
+                      onSuccess: () => {
+                        toast.success(`${f.name} removed from scope`)
+                        void navigate({ to: '/app/frameworks' })
+                      },
+                    })
+                  }
+                >
+                  Remove from scope
+                </Button>
+              ) : (
+                <Button loading={adopt.isPending} onClick={() => adopt.mutate(f.id, { onError: (e) => toast.error(errorMessage(e)) })} data-testid="framework-adopt">
+                  Add to scope
+                </Button>
+              )}
+            </>
           ) : null
         }
       />
+      {editing ? <EditFramework id={f.id} onClose={() => setEditing(false)} /> : null}
+      {deleting ? <DeleteFramework id={f.id} name={f.name} onClose={() => setDeleting(false)} /> : null}
       <Card className="mb-6">
         <CardContent className="grid gap-6 p-6 md:grid-cols-4">
           <div className="md:col-span-2">
@@ -81,6 +99,48 @@ export function FrameworkDetailPage() {
         ))}
       </div>
     </div>
+  )
+}
+
+function EditFramework({ id, onClose }: { id: string; onClose: () => void }) {
+  const { data } = useQuery(frameworkDefinitionQuery(id))
+  // Mount the dialog once the definition has loaded so it starts from the saved values.
+  return data ? <CustomFrameworkDialog id={id} initial={data} onClose={onClose} /> : null
+}
+
+function DeleteFramework({ id, name, onClose }: { id: string; name: string; onClose: () => void }) {
+  const del = useDeleteCustomFramework()
+  const navigate = useNavigate()
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete {name}?</DialogTitle>
+          <DialogDescription>The framework and its requirements are removed and it leaves scope. Controls, evidence and tests stay, since other frameworks may rely on them.</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            loading={del.isPending}
+            data-testid="framework-delete-confirm"
+            onClick={() =>
+              del.mutate(id, {
+                onSuccess: () => {
+                  toast.success(`${name} deleted`)
+                  void navigate({ to: '/app/frameworks' })
+                },
+                onError: (e) => toast.error(errorMessage(e)),
+              })
+            }
+          >
+            Delete framework
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

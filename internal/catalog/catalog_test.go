@@ -17,8 +17,19 @@ func TestCatalogLoads(t *testing.T) {
 	if len(c.Controls) < 80 {
 		t.Errorf("expected >= 80 controls, got %d", len(c.Controls))
 	}
-	if len(c.VendorQuestionnaires) != 1 || len(c.VendorQuestionnaires[0].Questions) != 20 {
-		t.Errorf("vendor questionnaire template missing")
+	if len(c.VendorQuestionnaires) < 5 || c.VendorQuestionnaires[0].ID != "vendor-security-v1" || len(c.VendorQuestionnaires[0].Questions) != 20 {
+		t.Errorf("general vendor questionnaire should come first")
+	}
+	for _, fw := range []string{"hipaa", "gdpr", "pci_dss", "iso42001", "nist_ai_rmf"} {
+		found := false
+		for _, q := range c.VendorQuestionnaires {
+			for _, f := range q.Frameworks {
+				found = found || f == fw
+			}
+		}
+		if !found {
+			t.Errorf("no vendor questionnaire for %s", fw)
+		}
 	}
 	if len(c.Policies) < 20 {
 		t.Errorf("expected >= 20 policy templates, got %d", len(c.Policies))

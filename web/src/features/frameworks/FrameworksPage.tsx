@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
@@ -8,15 +9,29 @@ import { frameworksQuery, useAdoptFramework, type FrameworkSummary } from '@/api
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { CustomFrameworkDialog } from './CustomFrameworkDialog'
 
 export function FrameworksPage() {
   const { data } = useQuery(frameworksQuery())
   const adopted = data?.items.filter((f) => f.adopted) ?? []
   const available = data?.items.filter((f) => !f.adopted) ?? []
+  const { can } = usePermissions()
+  const [newOpen, setNewOpen] = useState(false)
   return (
     <div>
-      <PageHeader title="Frameworks" description="Readiness per framework. One control can satisfy requirements in several frameworks, so adding a framework reuses the work you have already done." />
+      <PageHeader
+        title="Frameworks"
+        description="Readiness per framework. One control can satisfy requirements in several frameworks, so adding a framework reuses the work you have already done."
+        actions={
+          can('controls:write') ? (
+            <Button onClick={() => setNewOpen(true)} data-testid="framework-new">
+              <Plus /> Custom framework
+            </Button>
+          ) : null
+        }
+      />
       <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-muted-foreground">In scope</h2>
       {adopted.length === 0 ? <p className="mb-6 text-sm text-muted-foreground">No frameworks yet. Add one below to start.</p> : null}
       <div className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -30,6 +45,7 @@ export function FrameworksPage() {
           <AvailableCard key={f.id} f={f} />
         ))}
       </div>
+      {newOpen ? <CustomFrameworkDialog onClose={() => setNewOpen(false)} /> : null}
     </div>
   )
 }
@@ -41,7 +57,10 @@ export function ReadinessCard({ f }: { f: FrameworkSummary }) {
     <Link to="/app/frameworks/$id" params={{ id: f.id }} data-testid={`framework-card-${f.id}`}>
       <Card className="h-full transition-shadow hover:shadow-md">
         <CardHeader className="pb-3">
-          <CardDescription>{f.publisher || 'Framework'}</CardDescription>
+          <CardDescription className="flex items-center gap-2">
+            {f.publisher || 'Framework'}
+            {f.custom ? <Badge variant="outline">Custom</Badge> : null}
+          </CardDescription>
           <CardTitle className="flex items-baseline justify-between">
             <span>{f.name}</span>
             <span className="text-2xl tabular-nums" data-testid={`framework-percent-${f.id}`}>
@@ -80,10 +99,19 @@ function AvailableCard({ f }: { f: FrameworkSummary }) {
   return (
     <Card className="flex flex-col" data-testid={`framework-available-${f.id}`}>
       <CardHeader className="pb-3">
-        <CardDescription>
-          {f.publisher} · {f.version}
+        <CardDescription className="flex items-center gap-2">
+          {[f.publisher, f.version].filter(Boolean).join(' · ') || 'Framework'}
+          {f.custom ? <Badge variant="outline">Custom</Badge> : null}
         </CardDescription>
-        <CardTitle>{f.name}</CardTitle>
+        <CardTitle>
+          {f.custom ? (
+            <Link to="/app/frameworks/$id" params={{ id: f.id }} className="hover:underline">
+              {f.name}
+            </Link>
+          ) : (
+            f.name
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col justify-between gap-4">
         <p className="line-clamp-3 text-sm text-muted-foreground">{f.description}</p>

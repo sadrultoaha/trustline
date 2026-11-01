@@ -1,0 +1,14 @@
+id: gdpr-vendor-v1
+title: GDPR Processor Questionnaire
+description: Questions for vendors that process personal data of people in the EU or UK on our behalf.
+frameworks: [gdpr]
+questions:
+  - {id: gdpr_article28, section: Processing terms, type: yes_no, question: "Will you sign a data processing agreement covering the terms required of processors (GDPR Article 28)?"}
+  - {id: gdpr_instructions, section: Processing terms, type: yes_no, question: "Do you process our personal data only on our documented instructions?"}
+  - {id: gdpr_categories, section: Processing terms, type: text, question: "Which categories of personal data and data subjects will you process?"}
+  - {id: gdpr_transfers, section: International transfers, type: choice, options: [No transfers outside the EEA/UK, Adequacy decision, Standard contractual clauses, Other], question: "How are transfers of our personal data outside the EEA/UK covered?"}
+  - {id: gdpr_subprocessor_notice, section: Sub-processors, type: yes_no, question: "Will you give us advance notice of new sub-processors and a chance to object?"}
+  - {id: gdpr_dsr, section: Data subject rights, type: yes_no, question: "Can you help us answer data subject requests (access, erasure, portability) within one month?"}
+  - {id: gdpr_breach_notice, section: Breaches, type: yes_no, question: "Will you notify us of a personal data breach without undue delay, so we can meet the 72-hour regulator deadline?"}
+  - {id: gdpr_dpo, section: Accountability, type: text, question: "Who is your data protection officer or privacy contact?"}
+  - {id: gdpr_records, section: Accountability, type: yes_no, question: "Do you keep records of the processing you carry out on our behalf?"}

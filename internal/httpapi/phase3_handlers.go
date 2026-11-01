@@ -27,6 +27,7 @@ func (s *Server) mountPhase3(r chi.Router) {
 	r.With(p(rbac.RisksWrite)).Post("/risks/{id}/reviewed", s.reviewRisk)
 
 	r.With(p(rbac.VendorsRead)).Get("/vendors", s.listVendors)
+	r.With(p(rbac.VendorsRead)).Get("/questionnaire-library", s.questionnaireLibrary)
 	r.With(p(rbac.VendorsWrite)).Post("/vendors", s.createVendor)
 	r.With(p(rbac.VendorsRead)).Get("/vendors/{id}", s.getVendor)
 	r.With(p(rbac.VendorsWrite)).Patch("/vendors/{id}", s.updateVendor)
@@ -150,7 +151,12 @@ func (s *Server) reviewRisk(w http.ResponseWriter, r *http.Request) {
 // --- vendors -------------------------------------------------------------------
 
 func (s *Server) listVendors(w http.ResponseWriter, r *http.Request) {
-	items, err := s.comp.ListVendors(r.Context(), TenantFrom(r.Context()).OrgID, r.URL.Query().Get("status"))
+	items, err := s.comp.ListVendors(r.Context(), TenantFrom(r.Context()).OrgID, compliance.VendorFilter{Status: r.URL.Query().Get("status"), FrameworkID: r.URL.Query().Get("framework")})
+	s.respond(w, r, 200, map[string]any{"items": items}, err)
+}
+
+func (s *Server) questionnaireLibrary(w http.ResponseWriter, r *http.Request) {
+	items, err := s.comp.QuestionnaireLibrary(r.Context(), TenantFrom(r.Context()).OrgID)
 	s.respond(w, r, 200, map[string]any{"items": items}, err)
 }
 

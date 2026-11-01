@@ -1,6 +1,7 @@
 id: vendor-security-v1
 title: Vendor Security Questionnaire
 description: Twenty questions covering the security practices we expect from vendors that access our data.
+frameworks: []
 questions:
   - {id: certifications, section: Assurance, type: choice, options: [SOC 2 Type II, ISO 27001, Both, None], question: "Which independent security attestations do you hold?"}
   - {id: report_date, section: Assurance, type: text, question: "When does the period of your most recent audit report end? (YYYY-MM-DD)"}

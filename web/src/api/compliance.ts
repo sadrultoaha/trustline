@@ -19,6 +19,7 @@ export interface FrameworkSummary {
   version: string
   publisher: string
   description: string
+  custom: boolean
   adopted: boolean
   adopted_at?: string
   readiness: Readiness
@@ -44,6 +45,26 @@ export interface SectionView {
 }
 export interface FrameworkDetail extends FrameworkSummary {
   sections: SectionView[]
+}
+export interface CustomRequirementInput {
+  code: string
+  section: string
+  title: string
+  description: string
+  controls: string[]
+}
+export interface CustomFrameworkInput {
+  name: string
+  version: string
+  publisher: string
+  description: string
+  requirements: CustomRequirementInput[]
+}
+export interface LibraryControl {
+  code: string
+  name: string
+  domain: string
+  description: string
 }
 export interface Owner {
   membership_id: string
@@ -314,6 +335,9 @@ const qs = (params: Record<string, string | undefined>) => {
 export const dashboardQuery = () => queryOptions({ queryKey: ['dashboard'], queryFn: () => api.get<Dashboard>('/dashboard'), refetchInterval: 10_000 })
 export const frameworksQuery = () => queryOptions({ queryKey: ['frameworks'], queryFn: () => api.get<Items<FrameworkSummary>>('/frameworks'), refetchInterval: 10_000 })
 export const frameworkQuery = (id: string) => queryOptions({ queryKey: ['frameworks', id], queryFn: () => api.get<FrameworkDetail>(`/frameworks/${id}`) })
+export const frameworkDefinitionQuery = (id: string) =>
+  queryOptions({ queryKey: ['frameworks', id, 'definition'], queryFn: () => api.get<CustomFrameworkInput & { id: string }>(`/frameworks/${id}/definition`) })
+export const controlLibraryQuery = () => queryOptions({ queryKey: ['control-library'], queryFn: () => api.get<Items<LibraryControl>>('/control-library'), staleTime: Infinity })
 export const controlsQuery = (f: { framework?: string; status?: string; q?: string }) =>
   queryOptions({ queryKey: ['controls', f], queryFn: () => api.get<Items<ControlRow>>(`/controls${qs(f)}`), placeholderData: keepPreviousData, refetchInterval: 10_000 })
 export const controlQuery = (id: string) => queryOptions({ queryKey: ['control', id], queryFn: () => api.get<ControlDetail>(`/controls/${id}`), refetchInterval: 5_000 })
@@ -349,6 +373,21 @@ export function useAdoptFramework() {
 export function useRemoveFramework() {
   const inv = useInvalidate()
   return useMutation({ mutationFn: (id: string) => api.delete(`/frameworks/${id}`), onSuccess: () => inv('frameworks', 'controls', 'dashboard', 'activity') })
+}
+export function useCreateCustomFramework() {
+  const inv = useInvalidate()
+  return useMutation({ mutationFn: (input: CustomFrameworkInput) => api.post<FrameworkDetail>('/frameworks', input), onSuccess: () => inv('frameworks', 'activity') })
+}
+export function useUpdateCustomFramework(id: string) {
+  const inv = useInvalidate()
+  return useMutation({
+    mutationFn: (input: CustomFrameworkInput) => api.put<FrameworkDetail>(`/frameworks/${id}/definition`, input),
+    onSuccess: () => inv('frameworks', 'controls', 'control', 'dashboard', 'activity'),
+  })
+}
+export function useDeleteCustomFramework() {
+  const inv = useInvalidate()
+  return useMutation({ mutationFn: (id: string) => api.delete(`/frameworks/${id}/definition`), onSuccess: () => inv('frameworks', 'controls', 'control', 'dashboard', 'activity') })
 }
 export function useSetControlOwner(id: string) {
   const inv = useInvalidate()

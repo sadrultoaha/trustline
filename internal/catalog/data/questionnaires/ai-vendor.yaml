@@ -1,0 +1,13 @@
+id: ai-vendor-v1
+title: AI System Vendor Questionnaire
+description: Questions for vendors whose products use AI or machine learning on our data or in decisions that affect people.
+frameworks: [iso42001, nist_ai_rmf]
+questions:
+  - {id: ai_inventory, section: Governance, type: text, question: "Which AI or ML models does your service use, and who provides them?"}
+  - {id: ai_policy, section: Governance, type: yes_no, question: "Do you have a documented AI policy and an owner accountable for AI risk?"}
+  - {id: ai_training_on_customer_data, section: Data, type: yes_no, question: "Is our data excluded from training or fine-tuning models used for other customers?"}
+  - {id: ai_risk_assessment, section: Risk management, type: yes_no, question: "Do you assess AI-specific risks (bias, robustness, misuse) before releasing or changing a model?"}
+  - {id: ai_evaluation, section: Risk management, type: yes_no, question: "Do you test model performance and fairness on an ongoing basis after release?"}
+  - {id: ai_human_oversight, section: Operation, type: yes_no, question: "Can a human review or override AI outputs that affect people or our business decisions?"}
+  - {id: ai_transparency, section: Operation, type: yes_no, question: "Do you give us documentation of intended use, limitations and known failure modes?"}
+  - {id: ai_incident_notice, section: Operation, type: yes_no, question: "Will you notify us of AI incidents, such as harmful outputs or model compromise, that affect our use?"}

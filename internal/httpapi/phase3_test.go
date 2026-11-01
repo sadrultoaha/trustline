@@ -212,8 +212,9 @@ func TestVendorDiscoveryAndQuestionnairePortal(t *testing.T) {
 	token := link[strings.LastIndex(link, "/")+1:]
 	portal := app.Client(t) // unauthenticated vendor
 	pv := portal.Must(portal.Get("/api/v1/vendor-portal/"+token), 200).Body
-	questions := pv["template"].(obj)["questions"].([]any)
-	if pv["vendor_name"] != "Slack" || len(questions) != 20 {
+	tpls := pv["templates"].([]any)
+	questions := tpls[0].(obj)["questions"].([]any)
+	if pv["vendor_name"] != "Slack" || len(tpls) != 1 || len(questions) != 20 {
 		t.Fatalf("portal view: %v", pv)
 	}
 	if r := portal.Get("/api/v1/vendor-portal/not-a-token"); r.Status != 404 {

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { Bot, Download, FileUp, Loader2, Mail, RefreshCw } from 'lucide-react'
+import { Bot, Download, FileUp, Loader2, Mail, Pencil, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePermissions } from '@/api/auth'
-import { errorMessage } from '@/api/client'
+import { errorMessage, isApiError } from '@/api/client'
+import { frameworksQuery } from '@/api/compliance'
 import { membersQuery } from '@/api/org'
 import { vendorQuery, useVendorAction, type VendorAssessmentRow, type VendorDetail } from '@/api/phase3'
 import { FormField } from '@/components/layout/FormField'
@@ -19,6 +20,7 @@ import { Select } from '@/components/ui/select'
 import { connectorName } from '@/lib/connectors'
 import { formatDate, timeAgo } from '@/lib/utils'
 import { Cite, TierBadge } from './vendorUi'
+import { scopeInput, VendorScopeFields, type VendorScope } from './VendorScopeFields'
 
 const kinds = [
   ['soc2_type2', 'SOC 2 Type II report'],
@@ -39,6 +41,8 @@ export function VendorDetailPage() {
   const members = useQuery({ ...membersQuery, enabled: can('vendors:write') })
   const [upload, setUpload] = useState(false)
   const [send, setSend] = useState(false)
+  const [editScope, setEditScope] = useState(false)
+  const fws = useQuery(frameworksQuery()).data?.items ?? []
   if (!v) return <p className="text-sm text-muted-foreground">Loading…</p>
   const writable = can('vendors:write')
   const latest = v.assessments.find((a) => a.status === 'done' && a.result)
@@ -136,16 +140,22 @@ export function VendorDetailPage() {
                   <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-sm">
                     <span>
                       To {q.recipient_email} · sent {formatDate(q.sent_at)}
+                      <span className="text-muted-foreground"> · {q.templates.map((t) => t.title).join(', ')}</span>
                     </span>
                     <Badge variant={q.status === 'submitted' ? 'success' : 'outline'} className="capitalize">
                       {q.status.replace('_', ' ')}
                     </Badge>
                   </summary>
-                  <div className="space-y-1 border-t p-3 text-sm">
-                    {v.questionnaire_template?.questions.map((qq) => (
-                      <div key={qq.id} className="grid grid-cols-[1fr_auto] gap-2">
-                        <span className="text-muted-foreground">{qq.question}</span>
-                        <span className={q.answers[qq.id] === 'No' ? 'font-medium text-destructive' : 'font-medium'}>{q.answers[qq.id] || '—'}</span>
+                  <div className="space-y-4 border-t p-3 text-sm">
+                    {q.templates.map((t) => (
+                      <div key={t.id} className="space-y-1">
+                        {q.templates.length > 1 ? <div className="font-medium">{t.title}</div> : null}
+                        {t.questions.map((qq) => (
+                          <div key={qq.id} className="grid grid-cols-[1fr_auto] gap-2">
+                            <span className="text-muted-foreground">{qq.question}</span>
+                            <span className={q.answers[qq.id] === 'No' ? 'font-medium text-destructive' : 'font-medium'}>{q.answers[qq.id] || '—'}</span>
+                          </div>
+                        ))}
                       </div>
                     ))}
                   </div>
@@ -154,65 +164,108 @@ export function VendorDetailPage() {
             </CardContent>
           </Card>
         </div>
-        <Card className="h-fit">
-          <CardHeader>
-            <CardTitle>Profile</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Tier</span>
-              <TierBadge tier={v.tier} />
-            </div>
-            {v.recommended_tier && v.recommended_tier !== v.tier ? (
-              <Alert data-testid="vendor-recommended">
-                <AlertDescription className="flex items-center justify-between gap-2">
-                  <span>
-                    AI recommends <strong className="capitalize">{v.recommended_tier}</strong>
-                  </span>
-                  {writable ? (
-                    <Button size="sm" onClick={() => act.applyTier.mutate(undefined, { onSuccess: () => toast.success('Tier applied') })} data-testid="vendor-apply-tier">
-                      Apply
-                    </Button>
-                  ) : null}
-                </AlertDescription>
-              </Alert>
-            ) : null}
-            <FormField label="Data access" htmlFor="da">
-              <Select id="da" value={v.data_access} disabled={!writable} onChange={(e) => act.update.mutate({ data_access: e.target.value })}>
-                {['none', 'internal', 'confidential', 'restricted'].map((d) => (
-                  <option key={d}>{d}</option>
-                ))}
-              </Select>
-            </FormField>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={v.handles_pii} disabled={!writable} onChange={(e) => act.update.mutate({ handles_pii: e.target.checked })} /> Processes personal data
-            </label>
-            <FormField label="Tier" htmlFor="ti">
-              <Select id="ti" value={v.tier} disabled={!writable} onChange={(e) => act.update.mutate({ tier: e.target.value })} data-testid="vendor-tier-select">
-                {['critical', 'high', 'medium', 'low', 'unassessed'].map((d) => (
-                  <option key={d}>{d}</option>
-                ))}
-              </Select>
-            </FormField>
-            <FormField label="Owner" htmlFor="ow">
-              <Select id="ow" value={v.owner?.membership_id ?? ''} disabled={!writable} onChange={(e) => act.update.mutate({ owner_membership_id: e.target.value })}>
-                <option value="">Unassigned</option>
-                {members.data?.items.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
-            <div className="text-xs text-muted-foreground">
-              Review every {v.review_cycle_days} days · {v.last_reviewed_at ? `last ${formatDate(v.last_reviewed_at)}` : 'never reviewed'}
-              {v.next_review_at ? ` · next ${formatDate(v.next_review_at)}` : ''}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <Card data-testid="vendor-scope">
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+              <CardTitle>Compliance scope</CardTitle>
+              {writable ? (
+                <Button size="sm" variant="ghost" onClick={() => setEditScope(true)} data-testid="vendor-scope-edit">
+                  <Pencil /> Edit
+                </Button>
+              ) : null}
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div>
+                <div className="mb-1 text-muted-foreground">Frameworks</div>
+                {v.frameworks.length ? (
+                  <div className="flex flex-wrap gap-1" data-testid="vendor-scope-frameworks">
+                    {v.frameworks.map((id) => {
+                      const f = fws.find((x) => x.id === id)
+                      return (
+                        <Badge key={id} variant="outline" className="font-normal" title={f && !f.adopted ? 'This framework is no longer in scope' : undefined}>
+                          {f?.name ?? id}
+                          {f && !f.adopted ? ' (not in scope)' : ''}
+                        </Badge>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">Not mapped to a framework.</p>
+                )}
+              </div>
+              <div>
+                <div className="mb-1 text-muted-foreground">Questionnaires{v.questionnaires_default ? ' (suggested from frameworks)' : ''}</div>
+                <ul className="space-y-0.5" data-testid="vendor-scope-questionnaires">
+                  {v.questionnaire_templates.map((t) => (
+                    <li key={t.id}>
+                      {t.title} <span className="text-xs text-muted-foreground">· {t.question_count} questions</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="h-fit">
+            <CardHeader>
+              <CardTitle>Profile</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Tier</span>
+                <TierBadge tier={v.tier} />
+              </div>
+              {v.recommended_tier && v.recommended_tier !== v.tier ? (
+                <Alert data-testid="vendor-recommended">
+                  <AlertDescription className="flex items-center justify-between gap-2">
+                    <span>
+                      AI recommends <strong className="capitalize">{v.recommended_tier}</strong>
+                    </span>
+                    {writable ? (
+                      <Button size="sm" onClick={() => act.applyTier.mutate(undefined, { onSuccess: () => toast.success('Tier applied') })} data-testid="vendor-apply-tier">
+                        Apply
+                      </Button>
+                    ) : null}
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+              <FormField label="Data access" htmlFor="da">
+                <Select id="da" value={v.data_access} disabled={!writable} onChange={(e) => act.update.mutate({ data_access: e.target.value })}>
+                  {['none', 'internal', 'confidential', 'restricted'].map((d) => (
+                    <option key={d}>{d}</option>
+                  ))}
+                </Select>
+              </FormField>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={v.handles_pii} disabled={!writable} onChange={(e) => act.update.mutate({ handles_pii: e.target.checked })} /> Processes personal data
+              </label>
+              <FormField label="Tier" htmlFor="ti">
+                <Select id="ti" value={v.tier} disabled={!writable} onChange={(e) => act.update.mutate({ tier: e.target.value })} data-testid="vendor-tier-select">
+                  {['critical', 'high', 'medium', 'low', 'unassessed'].map((d) => (
+                    <option key={d}>{d}</option>
+                  ))}
+                </Select>
+              </FormField>
+              <FormField label="Owner" htmlFor="ow">
+                <Select id="ow" value={v.owner?.membership_id ?? ''} disabled={!writable} onChange={(e) => act.update.mutate({ owner_membership_id: e.target.value })}>
+                  <option value="">Unassigned</option>
+                  {members.data?.items.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+              <div className="text-xs text-muted-foreground">
+                Review every {v.review_cycle_days} days · {v.last_reviewed_at ? `last ${formatDate(v.last_reviewed_at)}` : 'never reviewed'}
+                {v.next_review_at ? ` · next ${formatDate(v.next_review_at)}` : ''}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
       {upload ? <UploadDialog v={v} onClose={() => setUpload(false)} /> : null}
       {send ? <SendDialog v={v} onClose={() => setSend(false)} /> : null}
+      {editScope ? <ScopeDialog v={v} onClose={() => setEditScope(false)} /> : null}
     </div>
   )
 }
@@ -367,8 +420,19 @@ function SendDialog({ v, onClose }: { v: VendorDetail; onClose: () => void }) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Send security questionnaire</DialogTitle>
-          <DialogDescription>The vendor gets a magic link to a portal — no account needed. {v.questionnaire_template?.questions.length} questions; the link expires in 30 days.</DialogDescription>
+          <DialogDescription>
+            The vendor gets a magic link to a portal — no account needed. {v.questionnaire_templates.reduce((n, t) => n + t.question_count, 0)} questions; the link expires in 30 days.
+          </DialogDescription>
         </DialogHeader>
+        {!link ? (
+          <ul className="list-disc space-y-0.5 pl-5 text-sm" data-testid="vendor-send-includes">
+            {v.questionnaire_templates.map((t) => (
+              <li key={t.id}>
+                {t.title} <span className="text-muted-foreground">· {t.question_count} questions</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {link ? (
           <Alert variant="success">
             <AlertDescription>
@@ -392,6 +456,43 @@ function SendDialog({ v, onClose }: { v: VendorDetail; onClose: () => void }) {
               Send
             </Button>
           )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ScopeDialog({ v, onClose }: { v: VendorDetail; onClose: () => void }) {
+  const act = useVendorAction(v.id)
+  const [scope, setScope] = useState<VendorScope>({ frameworks: v.frameworks, questionnaires: v.questionnaires_default ? null : v.questionnaire_templates.map((t) => t.id) })
+  const [fields, setFields] = useState<Record<string, string>>({})
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Compliance scope</DialogTitle>
+          <DialogDescription>Map {v.name} to the frameworks it supports and choose the questionnaires sent with the next request. Questionnaires already sent are not changed.</DialogDescription>
+        </DialogHeader>
+        <VendorScopeFields value={scope} onChange={setScope} errors={fields} keep={v.frameworks} />
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            loading={act.update.isPending}
+            data-testid="vendor-scope-save"
+            onClick={() =>
+              act.update.mutate(scopeInput(scope), {
+                onSuccess: () => {
+                  toast.success('Scope updated')
+                  onClose()
+                },
+                onError: (e) => (isApiError(e) && Object.keys(e.fields).length ? setFields(e.fields) : toast.error(errorMessage(e))),
+              })
+            }
+          >
+            Save
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

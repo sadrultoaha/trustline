@@ -128,11 +128,14 @@ type QuestionnaireQuestion struct {
 	Question string   `yaml:"question" json:"question"`
 }
 
-// QuestionnaireTemplate is a questionnaire sent to vendors.
+// QuestionnaireTemplate is a questionnaire sent to vendors. Templates without
+// frameworks are general and suggested for every vendor; the others are
+// suggested when a vendor is mapped to one of their frameworks.
 type QuestionnaireTemplate struct {
 	ID          string                  `yaml:"id" json:"id"`
 	Title       string                  `yaml:"title" json:"title"`
 	Description string                  `yaml:"description" json:"description"`
+	Frameworks  []string                `yaml:"frameworks" json:"frameworks"`
 	Questions   []QuestionnaireQuestion `yaml:"questions" json:"questions"`
 }
 
@@ -377,12 +380,39 @@ func parse(fsys fs.FS) (*Catalog, error) {
 		c.Training = append(c.Training, tc)
 	}
 	qFiles, _ := fs.Glob(fsys, "data/questionnaires/*.yaml")
+	sort.Strings(qFiles)
+	tplIDs := map[string]bool{}
+	// Question ids are unique across templates: answers to a questionnaire that
+	// bundles several templates are keyed by question id alone.
+	questionIDs := map[string]string{}
 	for _, f := range qFiles {
 		var qt QuestionnaireTemplate
 		if err := readYAML(fsys, f, &qt); err != nil {
 			return nil, err
 		}
+		if qt.ID == "" || qt.Title == "" || len(qt.Questions) == 0 {
+			return nil, fmt.Errorf("%s: id, title and questions are required", f)
+		}
+		if tplIDs[qt.ID] || strings.Contains(qt.ID, ":") {
+			return nil, fmt.Errorf("%s: duplicate or invalid template id %s", f, qt.ID)
+		}
+		tplIDs[qt.ID] = true
+		if qt.Frameworks == nil {
+			qt.Frameworks = []string{}
+		}
+		for _, fw := range qt.Frameworks {
+			if c.Framework(fw) == nil {
+				return nil, fmt.Errorf("%s: unknown framework %s", f, fw)
+			}
+		}
 		for _, q := range qt.Questions {
+			if q.ID == "" || strings.Contains(q.ID, "/") {
+				return nil, fmt.Errorf("%s: invalid question id %q", f, q.ID)
+			}
+			if other, dup := questionIDs[q.ID]; dup {
+				return nil, fmt.Errorf("%s: question id %s is already used by %s", f, q.ID, other)
+			}
+			questionIDs[q.ID] = qt.ID
 			switch q.Type {
 			case "yes_no", "text":
 			case "choice":
@@ -395,6 +425,10 @@ func parse(fsys fs.FS) (*Catalog, error) {
 		}
 		c.VendorQuestionnaires = append(c.VendorQuestionnaires, qt)
 	}
+	// General templates first.
+	sort.SliceStable(c.VendorQuestionnaires, func(i, j int) bool {
+		return len(c.VendorQuestionnaires[i].Frameworks) == 0 && len(c.VendorQuestionnaires[j].Frameworks) > 0
+	})
 	return c, nil
 }
 
@@ -402,6 +436,15 @@ func (c *Catalog) PolicyTemplate(id string) *PolicyTemplate {
 	for i := range c.Policies {
 		if c.Policies[i].ID == id {
 			return &c.Policies[i]
+		}
+	}
+	return nil
+}
+
+func (c *Catalog) Questionnaire(id string) *QuestionnaireTemplate {
+	for i := range c.VendorQuestionnaires {
+		if c.VendorQuestionnaires[i].ID == id {
+			return &c.VendorQuestionnaires[i]
 		}
 	}
 	return nil

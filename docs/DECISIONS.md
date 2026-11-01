@@ -182,3 +182,25 @@ The fake Google provider lets anyone pick any email, so it is refused in prod. T
 uses `GOOGLE_OAUTH_MODE=off`, which removes the routes and hides the buttons via
 `GET /api/v1/auth/providers`. Mail goes to an in-memory outbox, so password reset and invite emails
 are not delivered there; questionnaire links are shown in the UI when sent.
+
+## 2026-11-01 — Custom frameworks are org tables, unioned with the catalog through views
+Orgs need frameworks the catalog does not ship (customer contracts, internal standards). They live
+in org-scoped `custom_*` tables so the catalog stays global and handler-free. Requirements may only
+map to catalog control codes: there are no custom controls yet, and mapping onto the shared library
+is what lets existing passing controls count toward a new framework at once. `org_frameworks` lost
+its foreign key to `catalog_frameworks` so it can point at either kind; catalog sync still keeps
+adopted catalog frameworks, and deleting a custom framework removes it from scope in the same
+transaction. Read paths use the `*_defs` views and must filter on `org_id IS NULL OR org_id = $org`.
+
+## 2026-11-01 — Vendors map to frameworks; questionnaires are bundled and frozen at send time
+A vendor maps to frameworks in the org's scope (`vendor_frameworks`). Only newly added mappings
+must be in scope, so a vendor stays editable after one of its frameworks leaves scope. Catalog
+questionnaire templates carry a `frameworks` tag: untagged ones are general and always suggested,
+tagged ones are suggested when the vendor maps a matching framework, and each custom framework
+yields a generated questionnaire (one yes/no per requirement plus an exceptions question).
+A vendor's attached set (`vendor_questionnaire_templates`) is chosen at onboarding; with none
+attached it follows the suggestions, which covers discovered and pre-existing vendors without a
+backfill. Sending copies the questions into `vendor_questionnaires.questions`, so later template or
+framework edits never change what a vendor answers; rows sent earlier fall back to the catalog
+template named in `template_id`. Answers stay keyed by question id alone: catalog question ids are
+unique across templates (checked at load) and generated ids are prefixed with the framework id.

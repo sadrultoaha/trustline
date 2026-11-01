@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/trustline/trustline/internal/activity"
+	"github.com/trustline/trustline/internal/catalog"
 	"github.com/trustline/trustline/internal/db"
 	"github.com/trustline/trustline/internal/domain"
 	"github.com/trustline/trustline/internal/jobs"
@@ -27,6 +28,7 @@ type FrameworkSummary struct {
 	Version     string     `json:"version"`
 	Publisher   string     `json:"publisher"`
 	Description string     `json:"description"`
+	Custom      bool       `json:"custom"`
 	Adopted     bool       `json:"adopted"`
 	AdoptedAt   *time.Time `json:"adopted_at,omitempty"`
 	Readiness   Readiness  `json:"readiness"`
@@ -39,10 +41,10 @@ func (s *Service) readiness(ctx context.Context, q db.Querier, orgID domain.ID, 
 		WITH req AS (
 		  SELECT r.framework_id, r.id,
 		         bool_and(COALESCE(c.status = 'passing', false)) AS met
-		  FROM catalog_requirements r
-		  JOIN catalog_requirement_controls rc ON rc.requirement_id = r.id
+		  FROM requirement_defs r
+		  JOIN requirement_control_defs rc ON rc.requirement_id = r.id
 		  LEFT JOIN controls c ON c.org_id = $1 AND c.code = rc.control_code
-		  WHERE r.framework_id = ANY($2)
+		  WHERE r.framework_id = ANY($2) AND (r.org_id IS NULL OR r.org_id = $1)
 		  GROUP BY r.framework_id, r.id
 		)
 		SELECT framework_id, count(*), count(*) FILTER (WHERE met) FROM req GROUP BY framework_id`, orgID, fwIDs)
@@ -66,10 +68,10 @@ func (s *Service) readiness(ctx context.Context, q db.Querier, orgID domain.ID, 
 		SELECT r.framework_id, count(DISTINCT rc.control_code),
 		       count(DISTINCT rc.control_code) FILTER (WHERE c.status = 'passing'),
 		       count(DISTINCT rc.control_code) FILTER (WHERE c.status = 'failing')
-		FROM catalog_requirements r
-		JOIN catalog_requirement_controls rc ON rc.requirement_id = r.id
+		FROM requirement_defs r
+		JOIN requirement_control_defs rc ON rc.requirement_id = r.id
 		LEFT JOIN controls c ON c.org_id = $1 AND c.code = rc.control_code
-		WHERE r.framework_id = ANY($2)
+		WHERE r.framework_id = ANY($2) AND (r.org_id IS NULL OR r.org_id = $1)
 		GROUP BY r.framework_id`, orgID, fwIDs)
 	if err != nil {
 		return nil, err
@@ -88,11 +90,13 @@ func (s *Service) readiness(ctx context.Context, q db.Querier, orgID domain.ID, 
 	return out, rows.Err()
 }
 
-// ListFrameworks returns every catalog framework with adoption state and readiness.
+// ListFrameworks returns every catalog framework plus the org's custom ones,
+// with adoption state and readiness.
 func (s *Service) ListFrameworks(ctx context.Context, orgID domain.ID) ([]FrameworkSummary, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT f.id, f.name, f.version, f.publisher, f.description, of.adopted_at
-		FROM catalog_frameworks f LEFT JOIN org_frameworks of ON of.framework_id = f.id AND of.org_id = $1
-		ORDER BY of.adopted_at IS NULL, f.position`, orgID)
+	rows, err := s.Pool.Query(ctx, `SELECT f.id, f.name, f.version, f.publisher, f.description, f.custom, of.adopted_at
+		FROM framework_defs f LEFT JOIN org_frameworks of ON of.framework_id = f.id AND of.org_id = $1
+		WHERE f.org_id IS NULL OR f.org_id = $1
+		ORDER BY of.adopted_at IS NULL, f.position, lower(f.name)`, orgID)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +104,7 @@ func (s *Service) ListFrameworks(ctx context.Context, orgID domain.ID) ([]Framew
 	var ids []string
 	for rows.Next() {
 		var f FrameworkSummary
-		if err := rows.Scan(&f.ID, &f.Name, &f.Version, &f.Publisher, &f.Description, &f.AdoptedAt); err != nil {
+		if err := rows.Scan(&f.ID, &f.Name, &f.Version, &f.Publisher, &f.Description, &f.Custom, &f.AdoptedAt); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -143,9 +147,9 @@ func (s *Service) adoptedFrameworks(ctx context.Context, q db.Querier, orgID dom
 // missing; controls that already exist (and may already pass) count at once —
 // that is the crosswalk paying off.
 func (s *Service) AdoptFramework(ctx context.Context, orgID domain.ID, fwID string, actor domain.Actor) error {
-	fw := s.Catalog.Framework(fwID)
-	if fw == nil {
-		return domain.ErrNotFound
+	fw, _, err := s.loadFramework(ctx, s.Pool, orgID, fwID)
+	if err != nil {
+		return err
 	}
 	return db.Tx(ctx, s.Pool, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx, `INSERT INTO org_frameworks (org_id, framework_id, adopted_by) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, orgID, fwID, actor.ID)
@@ -155,18 +159,8 @@ func (s *Service) AdoptFramework(ctx context.Context, orgID domain.ID, fwID stri
 		if tag.RowsAffected() == 0 {
 			return domain.Invalid("framework", fw.Name+" is already in scope")
 		}
-		created, err := s.ensureControls(ctx, tx, orgID, s.Catalog.ControlsForFrameworks([]string{fwID}))
+		created, newTests, err := s.scopeControls(ctx, tx, orgID, fw)
 		if err != nil {
-			return err
-		}
-		if err := s.ensurePlatform(ctx, tx, orgID); err != nil {
-			return err
-		}
-		newTests, err := s.ensureTests(ctx, tx, orgID)
-		if err != nil {
-			return err
-		}
-		if _, err := s.recompute(ctx, tx, orgID, nil); err != nil {
 			return err
 		}
 		if err := activity.Record(ctx, tx, orgID, actor, activity.Entry{Action: "framework.adopted", TargetType: "framework", TargetID: fwID, TargetLabel: fw.Name,
@@ -178,6 +172,22 @@ func (s *Service) AdoptFramework(ctx context.Context, orgID domain.ID, fwID stri
 		}
 		return nil
 	})
+}
+
+// scopeControls creates the org controls (and tests) a framework maps to and
+// recomputes control status.
+func (s *Service) scopeControls(ctx context.Context, tx pgx.Tx, orgID domain.ID, fw *catalog.Framework) (created, newTests int, err error) {
+	if created, err = s.ensureControls(ctx, tx, orgID, frameworkControls(fw)); err != nil {
+		return
+	}
+	if err = s.ensurePlatform(ctx, tx, orgID); err != nil {
+		return
+	}
+	if newTests, err = s.ensureTests(ctx, tx, orgID); err != nil {
+		return
+	}
+	_, err = s.recompute(ctx, tx, orgID, nil)
+	return
 }
 
 // RemoveFramework takes a framework out of scope. Controls stay (other
@@ -192,7 +202,7 @@ func (s *Service) RemoveFramework(ctx context.Context, orgID domain.ID, fwID str
 			return domain.ErrNotFound
 		}
 		name := fwID
-		if fw := s.Catalog.Framework(fwID); fw != nil {
+		if fw, _, err := s.loadFramework(ctx, tx, orgID, fwID); err == nil {
 			name = fw.Name
 		}
 		return activity.Record(ctx, tx, orgID, actor, activity.Entry{Action: "framework.removed", TargetType: "framework", TargetID: fwID, TargetLabel: name})
@@ -228,11 +238,11 @@ type FrameworkDetail struct {
 
 // GetFramework returns readiness with a requirement-by-requirement drilldown.
 func (s *Service) GetFramework(ctx context.Context, orgID domain.ID, fwID string) (*FrameworkDetail, error) {
-	fw := s.Catalog.Framework(fwID)
-	if fw == nil {
-		return nil, domain.ErrNotFound
+	fw, custom, err := s.loadFramework(ctx, s.Pool, orgID, fwID)
+	if err != nil {
+		return nil, err
 	}
-	d := &FrameworkDetail{FrameworkSummary: FrameworkSummary{ID: fw.ID, Name: fw.Name, Version: fw.Version, Publisher: fw.Publisher, Description: fw.Description}}
+	d := &FrameworkDetail{FrameworkSummary: FrameworkSummary{ID: fw.ID, Name: fw.Name, Version: fw.Version, Publisher: fw.Publisher, Description: fw.Description, Custom: custom}}
 	if err := s.Pool.QueryRow(ctx, `SELECT adopted_at FROM org_frameworks WHERE org_id = $1 AND framework_id = $2`, orgID, fwID).Scan(&d.AdoptedAt); err != nil && !db.IsNoRows(err) {
 		return nil, err
 	}
@@ -242,6 +252,9 @@ func (s *Service) GetFramework(ctx context.Context, orgID domain.ID, fwID string
 		return nil, err
 	}
 	d.Readiness = rd[fwID]
+	if d.Sections == nil {
+		d.Sections = []SectionView{}
+	}
 	// Org control status by code.
 	type ctl struct {
 		id     domain.ID
